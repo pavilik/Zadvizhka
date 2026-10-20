@@ -110,7 +110,7 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   Icons.storage,
                 ),
                 _buildChartPage(
-                  const ImitationScreen(),
+                  ImitationScreen(),
                   'Имитация',
                   Icons.tune,
                 ),
