@@ -21,11 +21,9 @@ class ImitationModel extends ChangeNotifier {
   double _hChem = 400.0;
   static const double vChem = 800.0;
 
-  // Задвижка 1 — на входе в ёмкость (0–100%), макс 300 т/ч
-  double _kValve1 = 0.5;
-
-  // Задвижка 2 — между ёмкостью и химцехом (0–100%), макс 300 т/ч
-  double _kValve2 = 0.5;
+  // Потоки в т/ч (а не проценты!)
+  double _qValve1 = 150.0; // через Задвижку 1 (0–300 т/ч)
+  double _qValve2 = 150.0; // через Задвижку 2 (0–300 т/ч)
 
   // Ввод: фиксированный 300 т/ч
   static const double qInMax = 300.0;
@@ -47,8 +45,8 @@ class ImitationModel extends ChangeNotifier {
   // --- Getters ---
   double get hEmk => _hEmk;
   double get hChem => _hChem;
-  double get kValve1 => _kValve1;
-  double get kValve2 => _kValve2;
+  double get qValve1 => _qValve1;
+  double get qValve2 => _qValve2;
   double get qOut => _qOut;
   bool get randomQOut => _randomQOut;
   bool get running => _running;
@@ -66,25 +64,22 @@ class ImitationModel extends ChangeNotifier {
   }
 
   /// Прогноз времени до аварийного уровня для Ёмкости
-  /// Возвращает null если уровень безопасен или ёмкость уже пуста/полна
   String? get emkTimeToAlarm {
-    final balance = emkBalance; // т/ч (положительный = наполнение, отрицательный = опорожнение)
+    final balance = emkBalance;
     if (balance > 0) {
-      // Наполнение — считаем время до 95% (авария)
       final remaining = vEmk * 0.95 - _hEmk;
       if (remaining > 0) {
         final hours = remaining / balance;
         return _formatDuration(hours);
       }
     } else if (balance < 0) {
-      // Опорожнение — считаем время до 5% (авария)
       final remaining = _hEmk - vEmk * 0.05;
       if (remaining > 0) {
         final hours = remaining / (-balance);
         return _formatDuration(hours);
       }
     }
-    return null; // Баланс 0 или уже аварийный уровень
+    return null;
   }
 
   /// Прогноз времени до аварийного уровня для Химцеха
@@ -119,7 +114,7 @@ class ImitationModel extends ChangeNotifier {
     return '${m} мин';
   }
 
-  /// Направление изменения уровня Ёмкости: 1=растёт, -1=падает, 0=стабильно
+  /// Направление изменения уровня Ёмкости
   int get emkDirection => emkBalance > 0.1 ? 1 : (emkBalance < -0.1 ? -1 : 0);
 
   /// Направление изменения уровня Химцеха
@@ -127,7 +122,6 @@ class ImitationModel extends ChangeNotifier {
 
   /// Реальная скорость симуляции (1x..5000x)
   double get speed {
-    // Нелинейное отображение: 0→1x, 0.3→10x, 0.5→100x, 0.7→500x, 1.0→5000x
     return pow(5000, _speedSlider).clamp(1.0, 5000.0).toDouble();
   }
 
@@ -138,17 +132,17 @@ class ImitationModel extends ChangeNotifier {
     return '${s.toStringAsFixed(0)}×';
   }
 
-  // Расчёты потоков
-  double get qThroughValve1 => _kValve1 * qInMax;       // через Задвижку 1 (0–300 т/ч)
-  double get qThroughValve2 => _kValve2 * qInMax;       // через Задвижку 2 (0–300 т/ч)
+  // Процент открытия задвижек (для отображения)
+  double get kValve1 => _qValve1 / qInMax;
+  double get kValve2 => _qValve2 / qInMax;
 
   // Баланс для Ёмкости: приток - отток (т/ч)
-  double get emkBalance => qThroughValve1 - qThroughValve2;
+  double get emkBalance => _qValve1 - _qValve2;
 
   // Баланс для Химцеха: приток - отток (т/ч)
-  double get chemBalance => qThroughValve2 - _qOut;
+  double get chemBalance => _qValve2 - _qOut;
 
-  // Статусы для сигнализации (0=норма, 1=предупреждение, 2=авария)
+  // Статусы для сигнализации
   int get emkStatus {
     if (_hEmk >= vEmk * 0.95 || _hEmk <= vEmk * 0.05) return 2;
     if (_hEmk >= vEmk * 0.85 || _hEmk <= vEmk * 0.15) return 1;
@@ -161,30 +155,22 @@ class ImitationModel extends ChangeNotifier {
     return 0;
   }
 
-  void setKValve1(double v) {
-    _kValve1 = v.clamp(0.0, 1.0);
-    notifyListeners();
-  }
-
-  void setKValve2(double v) {
-    _kValve2 = v.clamp(0.0, 1.0);
-    notifyListeners();
-  }
-
-  void setQOut(double v) {
-    _qOutTarget = v.clamp(qOutMin, qOutMax);
-    notifyListeners();
-  }
-
-  /// Изменить поток через Задвижку 1 напрямую (в т/ч)
+  // Изменить поток через Задвижку 1 (в т/ч, шаг 1)
   void setQValve1(double q) {
-    _kValve1 = (q / qInMax).clamp(0.0, 1.0);
+    _qValve1 = q.clamp(0.0, qInMax);
     notifyListeners();
   }
 
-  /// Изменить поток через Задвижку 2 напрямую (в т/ч)
+  // Изменить поток через Задвижку 2 (в т/ч, шаг 1)
   void setQValve2(double q) {
-    _kValve2 = (q / qInMax).clamp(0.0, 1.0);
+    _qValve2 = q.clamp(0.0, qInMax);
+    notifyListeners();
+  }
+
+  // Изменить подпитку (в т/ч, шаг 1)
+  void setQOut(double v) {
+    _qOut = v.clamp(qOutMin, qOutMax);
+    _qOutTarget = _qOut;
     notifyListeners();
   }
 
@@ -216,8 +202,8 @@ class ImitationModel extends ChangeNotifier {
     stop();
     _hEmk = 1000.0;
     _hChem = 400.0;
-    _kValve1 = 0.5;
-    _kValve2 = 0.5;
+    _qValve1 = 150.0;
+    _qValve2 = 150.0;
     _qOut = 100.0;
     _qOutTarget = 100.0;
     _randomQOut = true;
@@ -231,23 +217,20 @@ class ImitationModel extends ChangeNotifier {
     _tickCount++;
 
     // dt — эффективный шаг времени в часах
-    // 50 мс * speed / 3600 = часы реального времени за один тик
     final double dt = 0.05 * speed / 3600.0;
 
     // --- Регулятор: каждые ~2 сек реального времени меняет уставку ---
-    // При ускорении регулятор дёргается чаще
     final int regulatorInterval = (40 / speed.clamp(1, 5000) * 40).round().clamp(1, 100);
     if (_randomQOut && _tickCount % regulatorInterval == 0) {
-      // Случайный скачок: -80..+80 т/ч
       _qOutTarget = (_qOutTarget + (_rng.nextDouble() - 0.5) * 160)
           .clamp(qOutMin, qOutMax);
     }
 
-    // Плавное движение регулятора к цели (быстрее при ускорении)
+    // Плавное движение регулятора к цели
     _qOut += (_qOutTarget - _qOut) * (0.1 * speed.clamp(1, 100)).clamp(0.01, 1.0);
     _qOut = _qOut.clamp(qOutMin, qOutMax);
 
-    // Изменение объёма Ёмкости: balance * dt (тонны = м³)
+    // Изменение объёма Ёмкости
     final double demk = emkBalance * dt;
     _hEmk = (_hEmk + demk).clamp(0.0, vEmk);
 
