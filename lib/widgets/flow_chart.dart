@@ -15,7 +15,7 @@ class FlowChart extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
           child: Text(
-            'Расходы: ввод скачет, ручная З1 пропускает непредсказуемо, ППН фиксирован',
+            'Расходы: ввод 300 т/ч, задвижки регулируют поток, подпитка 50–250 т/ч',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
           ),
         ),
@@ -64,10 +64,10 @@ class FlowChart extends StatelessWidget {
                 minY: 0,
                 maxY: 300,
                 lineBarsData: [
-                  _line(data.time, data.qIn, Colors.blue, 'Ввод (горводоканал)'),
-                  _line(data.time, data.qZ1, Colors.cyan, 'З1 (ручная)'),
-                  _line(data.time, data.qPpn, Colors.green, 'ППН (насос, фикс.)'),
-                  _line(data.time, data.qOut, Colors.red, 'Подпитка (потребитель)'),
+                  _line(data.time, data.qIn, Colors.blue, 'Ввод (300 т/ч)'),
+                  _line(data.time, data.qValve1, Colors.cyan, 'Задвижка 1'),
+                  _line(data.time, data.qValve2, Colors.teal, 'Задвижка 2'),
+                  _line(data.time, data.qOut, Colors.red, 'Подпитка (50–250 т/ч)'),
                 ],
                 lineTouchData: LineTouchData(
                   touchTooltipData: LineTouchTooltipData(
@@ -75,8 +75,8 @@ class FlowChart extends StatelessWidget {
                       return touchedSpots.map((spot) {
                         String label = '';
                         if (spot.barIndex == 0) label = 'Ввод';
-                        else if (spot.barIndex == 1) label = 'З1';
-                        else if (spot.barIndex == 2) label = 'ППН';
+                        else if (spot.barIndex == 1) label = 'Задвижка 1';
+                        else if (spot.barIndex == 2) label = 'Задвижка 2';
                         else if (spot.barIndex == 3) label = 'Подпитка';
                         return LineTooltipItem(
                           '$label: ${spot.y.toStringAsFixed(1)} т/ч',
@@ -113,10 +113,10 @@ class FlowChart extends StatelessWidget {
 
   Widget _buildLegend(BuildContext context) {
     final items = [
-      _legendItem(Colors.blue, 'Ввод (горводоканал)'),
-      _legendItem(Colors.cyan, 'З1 (ручная)'),
-      _legendItem(Colors.green, 'ППН (насос, фикс.)'),
-      _legendItem(Colors.red, 'Подпитка (потребитель)'),
+      _legendItem(Colors.blue, 'Ввод (300 т/ч)'),
+      _legendItem(Colors.cyan, 'Задвижка 1'),
+      _legendItem(Colors.teal, 'Задвижка 2'),
+      _legendItem(Colors.red, 'Подпитка (50–250 т/ч)'),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

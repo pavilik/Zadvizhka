@@ -31,24 +31,42 @@ class _ImitationScreenState extends State<ImitationScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Мгновенная визуализация — двигайте ручки, чтобы видеть результат',
+                'Управляйте задвижками, наблюдайте динамику уровней',
                 style: TextStyle(fontSize: 10, color: Colors.grey[500]),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+
+              // --- Control buttons + speed ---
+              _buildControls(),
+              const SizedBox(height: 12),
 
               // --- Flow diagram ---
               _buildFlowDiagram(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               // --- Two tanks side by side ---
               Row(
                 children: [
-                  Expanded(child: _buildTank('Ёмкость', _model.hEmk, ImitationModel.hEmkMin, ImitationModel.hEmkMax, 2000)),
+                  Expanded(
+                    child: _buildTank(
+                      'Ёмкость\n2000 м³',
+                      _model.hEmk,
+                      ImitationModel.vEmk,
+                      _model.emkStatus,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: _buildTank('Химцех', _model.hChem, ImitationModel.hChemMin, ImitationModel.hChemMax, 800)),
+                  Expanded(
+                    child: _buildTank(
+                      'Бак химцеха\n800 м³',
+                      _model.hChem,
+                      ImitationModel.vChem,
+                      _model.chemStatus,
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               // --- Vertical sliders ---
               _buildVerticalSliders(),
@@ -56,6 +74,115 @@ class _ImitationScreenState extends State<ImitationScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildControls() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2D2D44),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          // Buttons row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _ctrlButton(
+                icon: Icons.play_arrow,
+                label: 'Пуск',
+                color: Colors.green,
+                onPressed: _model.running ? null : _model.start,
+              ),
+              const SizedBox(width: 8),
+              _ctrlButton(
+                icon: Icons.stop,
+                label: 'Стоп',
+                color: Colors.red,
+                onPressed: _model.running ? _model.stop : null,
+              ),
+              const SizedBox(width: 8),
+              _ctrlButton(
+                icon: Icons.refresh,
+                label: 'Сброс',
+                color: Colors.orange,
+                onPressed: _model.reset,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Speed slider (логарифмический: 1x..5000x)
+          Row(
+            children: [
+              const Icon(Icons.speed, size: 16, color: Colors.white54),
+              const SizedBox(width: 6),
+              const Text('Ускорение:', style: TextStyle(fontSize: 11, color: Colors.white70)),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderThemeData(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                    activeTrackColor: Colors.amber,
+                    inactiveTrackColor: Colors.amber.withOpacity(0.15),
+                    thumbColor: Colors.amber,
+                    overlayColor: Colors.amber.withOpacity(0.1),
+                  ),
+                  child: Slider(
+                    value: _model.speedSlider,
+                    min: 0.0,
+                    max: 1.0,
+                    divisions: 100,
+                    label: _model.speedLabel,
+                    onChanged: _model.setSpeed,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 44,
+                child: Text(
+                  _model.speedLabel,
+                  style: const TextStyle(fontSize: 11, color: Colors.amber, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          // Tick counter
+          if (_model.running)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                'Тик: ${_model.tickCount}',
+                style: TextStyle(fontSize: 9, color: Colors.grey[600]),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ctrlButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    VoidCallback? onPressed,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16),
+      label: Text(label, style: const TextStyle(fontSize: 11)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.withOpacity(0.3),
+        foregroundColor: color,
+        disabledBackgroundColor: Colors.grey.withOpacity(0.15),
+        disabledForegroundColor: Colors.grey,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+          side: BorderSide(color: color.withOpacity(0.5), width: 1),
+        ),
+      ),
     );
   }
 
@@ -75,31 +202,31 @@ class _ImitationScreenState extends State<ImitationScreen> {
             children: [
               _flowNode('Ввод', '${ImitationModel.qInMax} т/ч', Colors.blue),
               _arrow(),
-              _flowNode('З1', '${_model.qZ1.toStringAsFixed(0)} т/ч', Colors.cyan),
+              _flowNode('Задвижка 1', '${_model.qThroughValve1.toStringAsFixed(0)} т/ч', Colors.cyan),
               _arrow(),
               _flowNode('Ёмкость', '${_model.hEmk.toStringAsFixed(0)} м³', Colors.blue),
             ],
           ),
           const SizedBox(height: 4),
-          // Row 2: Ёмкость → ППН → ПСВ → Химцех
+          // Row 2: Ёмкость → Задвижка 2 → Химцех
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              const SizedBox(width: 80),
-              _flowNode('ППН', '${_model.qPpn.toStringAsFixed(0)} т/ч', Colors.green),
+              const SizedBox(width: 60),
+              _flowNode('Задвижка 2', '${_model.qThroughValve2.toStringAsFixed(0)} т/ч', Colors.teal),
               _arrow(),
-              _flowNode('ПСВ', '${_model.qPsv.toStringAsFixed(0)} т/ч', Colors.teal),
-              _arrow(),
-              _flowNode('Химцех', '${_model.hChem.toStringAsFixed(0)} м³', Colors.orange),
+              _flowNode('Бак химцеха', '${_model.hChem.toStringAsFixed(0)} м³', Colors.orange),
             ],
           ),
           const SizedBox(height: 4),
-          // Row 3: Химцех → Выход
+          // Row 3: Химцех → Регулятор → Выход
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(width: 160),
-              _flowNode('Выход', '${_model.qOutReal.toStringAsFixed(0)} т/ч', Colors.red),
+              const SizedBox(width: 100),
+              _flowNodeRegulator('Регулятор', '${_model.qOut.toStringAsFixed(0)} т/ч'),
+              _arrow(),
+              _flowNode('Выход (подпитка)', '${_model.qOut.toStringAsFixed(0)} т/ч', Colors.red),
             ],
           ),
         ],
@@ -131,29 +258,64 @@ class _ImitationScreenState extends State<ImitationScreen> {
     );
   }
 
+  /// Зелёный треугольник ▲ для автоматического регулятора
+  Widget _flowNodeRegulator(String label, String value) {
+    return Column(
+      children: [
+        const Icon(Icons.play_arrow, size: 24, color: Colors.green),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.green.withOpacity(0.4), width: 1),
+          ),
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.green),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 10, color: Colors.green),
+        ),
+      ],
+    );
+  }
+
   Widget _arrow() => const Icon(Icons.arrow_forward, size: 14, color: Colors.white38);
 
-  Widget _buildTank(String name, double level, double minLevel, double maxLevel, double maxVolume) {
-    final double percent = ((level - minLevel) / (maxLevel - minLevel) * 100).clamp(0.0, 100.0);
-    final bool isOver = level > maxLevel;
-    final bool isUnder = level < minLevel;
-    final Color statusColor = isOver ? Colors.red : (isUnder ? Colors.amber : Colors.blue);
+  /// Цвет статуса: 0=синий(норма), 1=жёлтый(внимание), 2=красный(авария)
+  Color _statusColor(int status) {
+    switch (status) {
+      case 2: return Colors.red;
+      case 1: return Colors.amber;
+      default: return Colors.blue;
+    }
+  }
+
+  Widget _buildTank(String name, double level, double maxVolume, int status) {
+    final double percent = (level / maxVolume * 100).clamp(0.0, 100.0);
+    final Color color = _statusColor(status);
 
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF2D2D44),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: statusColor.withOpacity(0.5),
-          width: isOver || isUnder ? 2 : 1,
+          color: color.withOpacity(0.5),
+          width: status == 2 ? 2.5 : (status == 1 ? 2.0 : 1.0),
         ),
       ),
       padding: const EdgeInsets.all(8),
       child: Column(
         children: [
+          // Name
           Text(
             name,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white70),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white70),
           ),
           const SizedBox(height: 4),
           // Tank with blue water
@@ -161,20 +323,56 @@ class _ImitationScreenState extends State<ImitationScreen> {
             height: 120,
             child: CustomPaint(
               size: const Size(double.infinity, 120),
-              painter: _TankPainter(level: percent / 100.0),
+              painter: _TankPainter(level: percent / 100.0, statusColor: color),
             ),
           ),
           const SizedBox(height: 6),
           // Level info
           Text(
             '${level.toStringAsFixed(0)} м³',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: statusColor),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
           ),
           Text(
-            '$percent.toStringAsFixed(0)%',
+            '${percent.toStringAsFixed(1)}%',
             style: TextStyle(fontSize: 11, color: Colors.grey[400]),
           ),
+          // Status indicator
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _statusDot(0, 'Норм', status),
+              const SizedBox(width: 6),
+              _statusDot(1, 'Вним', status),
+              const SizedBox(width: 6),
+              _statusDot(2, 'Авар', status),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _statusDot(int level, String label, int current) {
+    final bool active = current >= level;
+    final Color c = _statusColor(level);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: active ? c.withOpacity(0.25) : Colors.transparent,
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(
+          color: active ? c.withOpacity(0.6) : Colors.white12,
+          width: active ? 1 : 0.5,
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 8,
+          color: active ? c : Colors.grey[600],
+          fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+        ),
       ),
     );
   }
@@ -186,29 +384,54 @@ class _ImitationScreenState extends State<ImitationScreen> {
         color: const Color(0xFF2D2D44),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      child: Column(
         children: [
-          _verticalSlider(
-            label: 'Задвижка 1',
-            value: _model.kZ1,
-            color: Colors.cyan,
-            onChanged: _model.setKZ1,
-            valueDisplay: '${_model.qZ1.toStringAsFixed(0)} т/ч',
+          const Text(
+            'Регулировка задвижек',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white54),
           ),
-          _verticalSlider(
-            label: 'Задвижка ПСВ',
-            value: _model.kPsv,
-            color: Colors.teal,
-            onChanged: _model.setKPsv,
-            valueDisplay: '${_model.qPsv.toStringAsFixed(0)} т/ч',
+          const SizedBox(height: 2),
+          Text(
+            'Задвижка 1 — приток в ёмкость, Задвижка 2 — отток из ёмкости в химцех.\n'
+            'Подпитка — автоматический регулятор (50–250 т/ч) с возмущениями.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 8, color: Colors.grey[600]),
           ),
-          _verticalSlider(
-            label: 'Подпитка',
-            value: (_model.qOut - 50) / 200, // Normalize 50-250 to 0-1
-            color: Colors.red,
-            onChanged: (v) => _model.setQOut(50 + v * 200),
-            valueDisplay: '${_model.qOutReal.toStringAsFixed(0)} т/ч',
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _verticalSlider(
+                label: 'Задвижка 1',
+                subtitle: 'приток в ёмкость',
+                hint: 'Больше → ёмкость наполняется быстрее',
+                value: _model.kValve1,
+                color: Colors.cyan,
+                onChanged: _model.setKValve1,
+                valueDisplay: '${_model.qThroughValve1.toStringAsFixed(0)} т/ч',
+              ),
+              _verticalSlider(
+                label: 'Задвижка 2',
+                subtitle: 'отток из ёмкости',
+                hint: 'Больше → ёмкость опорожняется в химцех',
+                value: _model.kValve2,
+                color: Colors.teal,
+                onChanged: _model.setKValve2,
+                valueDisplay: '${_model.qThroughValve2.toStringAsFixed(0)} т/ч',
+              ),
+              _verticalSlider(
+                label: 'Подпитка',
+                subtitle: '50–250 т/ч',
+                hint: 'Автоматический регулятор (возмущения)',
+                value: (_model.qOut - ImitationModel.qOutMin) /
+                    (ImitationModel.qOutMax - ImitationModel.qOutMin),
+                color: Colors.red,
+                onChanged: (v) => _model.setQOut(
+                    ImitationModel.qOutMin + v * (ImitationModel.qOutMax - ImitationModel.qOutMin)),
+                valueDisplay: '${_model.qOut.toStringAsFixed(0)} т/ч',
+              ),
+            ],
           ),
         ],
       ),
@@ -217,84 +440,107 @@ class _ImitationScreenState extends State<ImitationScreen> {
 
   Widget _verticalSlider({
     required String label,
+    required String subtitle,
+    required String hint,
     required double value,
     required Color color,
     required ValueChanged<double> onChanged,
     required String valueDisplay,
   }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white70),
-        ),
-        const SizedBox(height: 4),
-        // Value display above slider
-        Text(
-          valueDisplay,
-          style: TextStyle(fontSize: 10, color: color),
-        ),
-        const SizedBox(height: 4),
-        // Up arrow
-        IconButton(
-          icon: const Icon(Icons.arrow_upward, size: 20),
-          color: color,
-          onPressed: () => onChanged((value + 0.05).clamp(0.0, 1.0)),
-        ),
-        // Vertical slider
-        SizedBox(
-          height: 120,
-          child: RotatedBox(
-            quarterTurns: 3,
-            child: SizedBox(
-              width: 100,
-              child: Slider(
-                value: value,
-                min: 0.0,
-                max: 1.0,
-                divisions: 20,
-                activeColor: color,
-                inactiveColor: color.withOpacity(0.2),
-                onChanged: onChanged,
+    return Tooltip(
+      message: hint,
+      preferBelow: false,
+      triggerMode: TooltipTriggerMode.tap,
+      decoration: BoxDecoration(
+        color: const Color(0xFF3D3D5C),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      textStyle: TextStyle(fontSize: 10, color: Colors.grey[300], height: 1.4),
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white70),
+          ),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 8, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            valueDisplay,
+            style: TextStyle(fontSize: 10, color: color),
+          ),
+          const SizedBox(height: 2),
+          // Up arrow
+          IconButton(
+            icon: const Icon(Icons.arrow_upward, size: 18),
+            color: color,
+            onPressed: () => onChanged((value + 0.05).clamp(0.0, 1.0)),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            padding: EdgeInsets.zero,
+          ),
+          // Vertical slider
+          SizedBox(
+            height: 100,
+            child: RotatedBox(
+              quarterTurns: 3,
+              child: SizedBox(
+                width: 80,
+                child: Slider(
+                  value: value,
+                  min: 0.0,
+                  max: 1.0,
+                  divisions: 20,
+                  activeColor: color,
+                  inactiveColor: color.withOpacity(0.2),
+                  onChanged: onChanged,
+                ),
               ),
             ),
           ),
-        ),
-        // Down arrow
-        IconButton(
-          icon: const Icon(Icons.arrow_downward, size: 20),
-          color: color,
-          onPressed: () => onChanged((value - 0.05).clamp(0.0, 1.0)),
-        ),
-        // Percentage
-        Text(
-          '${(value * 100).toStringAsFixed(0)}%',
-          style: TextStyle(fontSize: 10, color: color),
-        ),
-      ],
+          // Down arrow
+          IconButton(
+            icon: const Icon(Icons.arrow_downward, size: 18),
+            color: color,
+            onPressed: () => onChanged((value - 0.05).clamp(0.0, 1.0)),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            padding: EdgeInsets.zero,
+          ),
+          // Percentage
+          Text(
+            '${(value * 100).toStringAsFixed(0)}%',
+            style: TextStyle(fontSize: 9, color: color),
+          ),
+        ],
+      ),
     );
   }
+
 }
 
 class _TankPainter extends CustomPainter {
   final double level;
+  final Color statusColor;
 
-  _TankPainter({required this.level});
+  _TankPainter({required this.level, required this.statusColor});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white24
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
     final rect = RRect.fromRectAndRadius(
       Rect.fromLTWH(4, 4, size.width - 8, size.height - 8),
       const Radius.circular(6),
     );
 
-    canvas.drawRRect(rect, paint);
+    // Tank border
+    final borderPaint = Paint()
+      ..color = statusColor.withOpacity(0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawRRect(rect, borderPaint);
 
     // Draw blue water
     if (level > 0) {
@@ -324,10 +570,20 @@ class _TankPainter extends CustomPainter {
         surfacePaint,
       );
     }
+
+    // Границы: 15% и 85% линии
+    final double y15 = size.height - 4 - (size.height - 8) * 0.15;
+    final double y85 = size.height - 4 - (size.height - 8) * 0.85;
+    final dashPaint = Paint()
+      ..color = Colors.white10
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+    canvas.drawLine(Offset(6, y15), Offset(size.width - 6, y15), dashPaint);
+    canvas.drawLine(Offset(6, y85), Offset(size.width - 6, y85), dashPaint);
   }
 
   @override
   bool shouldRepaint(covariant _TankPainter oldDelegate) {
-    return oldDelegate.level != level;
+    return oldDelegate.level != level || oldDelegate.statusColor != statusColor;
   }
 }

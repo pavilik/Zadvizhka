@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/simulation.dart';
 
-class DeaeratorChart extends StatelessWidget {
+class RegulatorChart extends StatelessWidget {
   final SimulationResult data;
 
-  const DeaeratorChart({super.key, required this.data});
+  const RegulatorChart({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +15,7 @@ class DeaeratorChart extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
           child: Text(
-            'Деаэратор: автоматика держит уровень, но упирается в лимит 160 т/ч',
+            'Подпитка 50–250 т/ч: регулятор меняет расход, ёмкости реагируют',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
           ),
         ),
@@ -27,7 +27,7 @@ class DeaeratorChart extends StatelessWidget {
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  horizontalInterval: 0.5,
+                  horizontalInterval: 50,
                   getDrawingHorizontalLine: (value) => FlLine(
                     color: Colors.grey.withOpacity(0.2),
                     strokeWidth: 1,
@@ -37,9 +37,9 @@ class DeaeratorChart extends StatelessWidget {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 36,
+                      reservedSize: 40,
                       getTitlesWidget: (value, meta) => Text(
-                        value.toStringAsFixed(1),
+                        '${value.toInt()}',
                         style: const TextStyle(fontSize: 10),
                       ),
                     ),
@@ -62,7 +62,7 @@ class DeaeratorChart extends StatelessWidget {
                       reservedSize: 40,
                       getTitlesWidget: (value, meta) => Text(
                         '${value.toInt()}',
-                        style: const TextStyle(fontSize: 10, color: Colors.brown),
+                        style: const TextStyle(fontSize: 10, color: Colors.red),
                       ),
                     ),
                   ),
@@ -71,35 +71,26 @@ class DeaeratorChart extends StatelessWidget {
                 minX: 0,
                 maxX: 120,
                 minY: 0,
-                maxY: 3,
+                maxY: 300,
                 lineBarsData: [
-                  // Level (left axis)
-                  _line(data.time, data.hDea, Colors.purple, 'Деаэратор (уровень)'),
-                  _rangeLine(data.time, SystemSimulation.hDeaMin, SystemSimulation.hDeaMax, Colors.purple),
-                  // Regulator flow lines (mapped to right axis: 0-200 т/ч → 0-3 м)
-                  _line(data.time, data.qReg1.map((v) => v / 200.0 * 3.0).toList(), Colors.pink, 'Рег 1 (в деаэратор)'),
-                  _line(data.time, data.qReg2.map((v) => v / 200.0 * 3.0).toList(), Colors.brown, 'Рег 2 (подпитка)'),
-                  // Q_dea_max limit line
-                  _constLine(SystemSimulation.qDeaMaxT / 200.0 * 3.0, Colors.pink.withOpacity(0.4)),
+                  // Подпитка (левая ось, т/ч)
+                  _line(data.time, data.qOut, Colors.red, 'Подпитка (т/ч)'),
+                  _constLine(SystemSimulation.qOutMin, Colors.red.withOpacity(0.3)),
+                  _constLine(SystemSimulation.qOutMax, Colors.red.withOpacity(0.3)),
+                  // Задвижка 2 (левая ось, т/ч)
+                  _line(data.time, data.qValve2, Colors.teal, 'Задвижка 2 (т/ч)'),
                 ],
                 lineTouchData: LineTouchData(
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipItems: (touchedSpots) {
                       return touchedSpots.map((spot) {
                         String label = '';
-                        if (spot.barIndex == 0) label = 'Деаэратор';
-                        else if (spot.barIndex == 1) label = 'Норма деаэратора';
-                        else if (spot.barIndex == 2) label = 'Рег 1';
-                        else if (spot.barIndex == 3) label = 'Рег 2';
-                        else if (spot.barIndex == 4) label = 'Лимит Рег1';
-                        String value;
-                        if (spot.barIndex <= 1) {
-                          value = '${spot.y.toStringAsFixed(2)} м';
-                        } else {
-                          value = '${(spot.y / 3.0 * 200.0).toStringAsFixed(1)} т/ч';
-                        }
+                        if (spot.barIndex == 0) label = 'Подпитка';
+                        else if (spot.barIndex == 1) label = 'Мин 50 т/ч';
+                        else if (spot.barIndex == 2) label = 'Макс 250 т/ч';
+                        else if (spot.barIndex == 3) label = 'Задвижка 2';
                         return LineTooltipItem(
-                          '$label: $value',
+                          '$label: ${spot.y.toStringAsFixed(1)} т/ч',
                           TextStyle(color: spot.bar.color, fontSize: 11),
                         );
                       }).toList();
@@ -131,22 +122,6 @@ class DeaeratorChart extends StatelessWidget {
     );
   }
 
-  LineChartBarData _rangeLine(List<double> time, double minVal, double maxVal, Color color) {
-    final spots = <FlSpot>[
-      FlSpot(0, minVal),
-      FlSpot(120, minVal),
-      FlSpot(120, maxVal),
-      FlSpot(0, maxVal),
-    ];
-    return LineChartBarData(
-      spots: spots,
-      color: color.withOpacity(0.15),
-      barWidth: 0,
-      dotData: FlDotData(show: false),
-      belowBarData: BarAreaData(show: true, color: color.withOpacity(0.08)),
-    );
-  }
-
   LineChartBarData _constLine(double y, Color color) {
     return LineChartBarData(
       spots: [FlSpot(0, y), FlSpot(120, y)],
@@ -160,11 +135,9 @@ class DeaeratorChart extends StatelessWidget {
 
   Widget _buildLegend(BuildContext context) {
     final items = [
-      _legendItem(Colors.purple, 'Деаэратор (уровень)'),
-      _legendItem(Colors.purple.withOpacity(0.2), 'Норма деаэратора'),
-      _legendItem(Colors.pink, 'Рег 1 (в деаэратор)'),
-      _legendItem(Colors.brown, 'Рег 2 (подпитка)'),
-      _legendItem(Colors.pink.withOpacity(0.4), 'Рег 1 лимит 160 т/ч'),
+      _legendItem(Colors.red, 'Подпитка (50–250 т/ч)'),
+      _legendItem(Colors.teal, 'Задвижка 2'),
+      _legendItem(Colors.red.withOpacity(0.3), 'Границы 50/250 т/ч'),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

@@ -15,7 +15,7 @@ class LevelChart extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
           child: Text(
-            'Уровни: ручные задвижки НЕ держат диапазон (выход за границы!)',
+            'Уровни в ёмкостях (м³): синий — норма, жёлтый — внимание, красный — авария',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
           ),
         ),
@@ -27,7 +27,7 @@ class LevelChart extends StatelessWidget {
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  horizontalInterval: 1,
+                  horizontalInterval: 200,
                   getDrawingHorizontalLine: (value) => FlLine(
                     color: Colors.grey.withOpacity(0.2),
                     strokeWidth: 1,
@@ -37,9 +37,9 @@ class LevelChart extends StatelessWidget {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 36,
+                      reservedSize: 40,
                       getTitlesWidget: (value, meta) => Text(
-                        value.toStringAsFixed(1),
+                        '${value.toInt()}',
                         style: const TextStyle(fontSize: 10),
                       ),
                     ),
@@ -62,10 +62,10 @@ class LevelChart extends StatelessWidget {
                 minX: 0,
                 maxX: 120,
                 minY: 0,
-                maxY: 8,
+                maxY: 2000,
                 lineBarsData: [
-                  _line(data.time, data.hEmk, Colors.green, 'Ёмкость'),
-                  _line(data.time, data.hChem, Colors.orange, 'Химцех'),
+                  _line(data.time, data.hEmk, Colors.green, 'Ёмкость (2000 м³)'),
+                  _line(data.time, data.hChem, Colors.orange, 'Химцех (800 м³)'),
                   _rangeLine(data.time, SystemSimulation.hEmkMin, SystemSimulation.hEmkMax, Colors.green),
                   _rangeLine(data.time, SystemSimulation.hChemMin, SystemSimulation.hChemMax, Colors.orange),
                 ],
@@ -76,10 +76,10 @@ class LevelChart extends StatelessWidget {
                         String label = '';
                         if (spot.barIndex == 0) label = 'Ёмкость';
                         else if (spot.barIndex == 1) label = 'Химцех';
-                        else if (spot.barIndex == 2) label = 'Ёмкость min/max';
-                        else if (spot.barIndex == 3) label = 'Химцех min/max';
+                        else if (spot.barIndex == 2) label = 'Ёмкость норма';
+                        else if (spot.barIndex == 3) label = 'Химцех норма';
                         return LineTooltipItem(
-                          '$label: ${spot.y.toStringAsFixed(2)} м',
+                          '$label: ${spot.y.toStringAsFixed(0)} м³',
                           TextStyle(color: spot.bar.color, fontSize: 11),
                         );
                       }).toList();
@@ -129,10 +129,10 @@ class LevelChart extends StatelessWidget {
 
   Widget _buildLegend(BuildContext context) {
     final items = [
-      _legendItem(Colors.green, 'Ёмкость'),
-      _legendItem(Colors.orange, 'Химцех'),
-      _legendItem(Colors.green.withOpacity(0.2), 'Норма ёмкости'),
-      _legendItem(Colors.orange.withOpacity(0.2), 'Норма химцеха'),
+      _legendItem(Colors.green, 'Ёмкость (2000 м³)'),
+      _legendItem(Colors.orange, 'Химцех (800 м³)'),
+      _legendItem(Colors.green.withOpacity(0.2), 'Норма 10–90%'),
+      _legendItem(Colors.orange.withOpacity(0.2), 'Норма 10–90%'),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

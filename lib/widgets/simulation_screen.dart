@@ -1,10 +1,16 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/simulation.dart';
 import 'flow_chart.dart';
 import 'level_chart.dart';
-import 'deaerator_chart.dart';
+import 'regulator_chart.dart';
 import 'tank_visualizer.dart';
 import 'imitation_screen.dart';
+
+// UTF-8 encoded Russian strings (dart2js strips non-ASCII)
+final _kImitation = String.fromCharCodes([
+  0x0418, 0x043c, 0x0438, 0x0442, 0x0430, 0x0446, 0x0438, 0x044f
+]); // "Имитация"
 
 class SimulationScreen extends StatefulWidget {
   const SimulationScreen({super.key});
@@ -15,20 +21,20 @@ class SimulationScreen extends StatefulWidget {
 
 class _SimulationScreenState extends State<SimulationScreen> {
   late SimulationResult _data;
-  double _kZ1 = 0.75;
-  double _kPsv = 0.70;
+  double _kValve1 = 0.75;
+  double _kValve2 = 0.70;
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
-    _data = SystemSimulation.run(kZ1: _kZ1, kPsv: _kPsv);
+    _data = SystemSimulation.run(kValve1: _kValve1, kValve2: _kValve2);
   }
 
   void _rerunSimulation() {
     setState(() {
-      _data = SystemSimulation.run(kZ1: _kZ1, kPsv: _kPsv);
+      _data = SystemSimulation.run(kValve1: _kValve1, kValve2: _kValve2);
     });
   }
 
@@ -60,7 +66,7 @@ class _SimulationScreenState extends State<SimulationScreen> {
       ),
       body: Column(
         children: [
-          // Sliders for Z1 and PSV
+          // Sliders for Valve 1 and Valve 2
           _buildSliders(),
           // Info banner
           Container(
@@ -73,8 +79,8 @@ class _SimulationScreenState extends State<SimulationScreen> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Ручные задвижки (З1, ПСВ) и ППН работают фиксированно — '
-                    'система не адаптируется к скачкам давления и потребления',
+                    'Ручные задвижки работают фиксированно — регулятор подпитки (50–250 т/ч) '
+                    'создаёт возмущения, нужно удерживать уровни в диапазоне',
                     style: TextStyle(fontSize: 10, color: Colors.grey[300]),
                   ),
                 ),
@@ -100,9 +106,9 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   Icons.water_drop,
                 ),
                 _buildChartPage(
-                  DeaeratorChart(data: _data),
-                  'Деаэратор',
-                  Icons.opacity,
+                  RegulatorChart(data: _data),
+                  'Регулятор',
+                  Icons.tune,
                 ),
                 _buildChartPage(
                   TankVisualizer(data: _data),
@@ -110,8 +116,8 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   Icons.storage,
                 ),
                 _buildChartPage(
-                  const ImitationScreen(),
-                  'Имитация',
+                  ImitationScreen(),
+                  _kImitation,
                   Icons.tune,
                 ),
               ],
@@ -147,7 +153,7 @@ class _SimulationScreenState extends State<SimulationScreen> {
       color: const Color(0xFF252540),
       child: Row(
         children: [
-          // Z1 slider
+          // Valve 1 slider
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,7 +164,7 @@ class _SimulationScreenState extends State<SimulationScreen> {
                     const Icon(Icons.toll, size: 14, color: Colors.cyan),
                     const SizedBox(width: 4),
                     Text(
-                      'З1: ${(_kZ1 * 100).toStringAsFixed(0)}%',
+                      'Задвижка 1: ${(_kValve1 * 100).toStringAsFixed(0)}%',
                       style: const TextStyle(
                         fontSize: 11,
                         color: Colors.cyan,
@@ -168,14 +174,14 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   ],
                 ),
                 Slider(
-                  value: _kZ1,
+                  value: _kValve1,
                   min: 0.0,
                   max: 1.0,
                   divisions: 20,
                   activeColor: Colors.cyan,
                   inactiveColor: Colors.cyan.withOpacity(0.2),
                   onChanged: (v) {
-                    setState(() => _kZ1 = v);
+                    setState(() => _kValve1 = v);
                   },
                   onChangeEnd: (_) => _rerunSimulation(),
                 ),
@@ -183,7 +189,7 @@ class _SimulationScreenState extends State<SimulationScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          // PSV slider
+          // Valve 2 slider
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,7 +200,7 @@ class _SimulationScreenState extends State<SimulationScreen> {
                     const Icon(Icons.toll, size: 14, color: Colors.teal),
                     const SizedBox(width: 4),
                     Text(
-                      'ПСВ: ${(_kPsv * 100).toStringAsFixed(0)}%',
+                      'Задвижка 2: ${(_kValve2 * 100).toStringAsFixed(0)}%',
                       style: const TextStyle(
                         fontSize: 11,
                         color: Colors.teal,
@@ -204,14 +210,14 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   ],
                 ),
                 Slider(
-                  value: _kPsv,
+                  value: _kValve2,
                   min: 0.0,
                   max: 1.0,
                   divisions: 20,
                   activeColor: Colors.teal,
                   inactiveColor: Colors.teal.withOpacity(0.2),
                   onChanged: (v) {
-                    setState(() => _kPsv = v);
+                    setState(() => _kValve2 = v);
                   },
                   onChangeEnd: (_) => _rerunSimulation(),
                 ),
