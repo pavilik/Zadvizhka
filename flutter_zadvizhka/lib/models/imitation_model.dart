@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 
 /// Модель имитации по схеме:
@@ -7,19 +9,15 @@ class ImitationModel extends ChangeNotifier {
   // Ёмкость: 2000 м³
   double _hEmk = 1000.0;
   static const double vEmk = 2000.0;
-  static const double hEmkMin = 0.0;
-  static const double hEmkMax = 2000.0;
 
   // Химцех: 800 м³
   double _hChem = 400.0;
   static const double vChem = 800.0;
-  static const double hChemMin = 0.0;
-  static const double hChemMax = 800.0;
 
-  // Задвижка 1 — на входе в ёмкость (0–100%)
+  // Задвижка 1 — на входе в ёмкость (0–100%), макс 300 т/ч
   double _kValve1 = 0.5;
 
-  // Задвижка 2 — между ёмкостью и химцехом (0–100%)
+  // Задвижка 2 — между ёмкостью и химцехом (0–100%), макс 300 т/ч
   double _kValve2 = 0.5;
 
   // Ввод: фиксированный 300 т/ч
@@ -27,6 +25,16 @@ class ImitationModel extends ChangeNotifier {
 
   // Подпитка (выход): автоматический регулятор, 50–250 т/ч
   double _qOut = 100.0;
+  double _qOutTarget = 100.0;
+  static const double qOutMin = 50.0;
+  static const double qOutMax = 250.0;
+
+  // --- Управление симуляцией ---
+  bool _running = false;
+  double _speed = 5.0; // 1x–10x
+  Timer? _timer;
+  int _tickCount = 0;
+  final Random _rng = Random();
 
   // --- Getters ---
   double get hEmk => _hEmk;
@@ -34,17 +42,32 @@ class ImitationModel extends ChangeNotifier {
   double get kValve1 => _kValve1;
   double get kValve2 => _kValve2;
   double get qOut => _qOut;
+  bool get running => _running;
+  double get speed => _speed;
+  int get tickCount => _tickCount;
 
   // Расчёты потоков
-  double get qThroughValve1 => _kValve1 * qInMax;  // через Задвижку 1
-  double get qThroughValve2 => _kValve2 * qThroughValve1; // через Задвижку 2
-  double get qOutReal => _qOut;                     // на выход (подпитка)
+  double get qThroughValve1 => _kValve1 * qInMax;       // через Задвижку 1 (0–300 т/ч)
+  double get qThroughValve2 => _kValve2 * qInMax;       // через Задвижку 2 (0–300 т/ч)
 
-  // Баланс для Ёмкости: приток - отток
+  // Баланс для Ёмкости: приток - отток (т/ч)
   double get emkBalance => qThroughValve1 - qThroughValve2;
 
-  // Баланс для Химцеха: приток - отток
+  // Баланс для Химцеха: приток - отток (т/ч)
   double get chemBalance => qThroughValve2 - _qOut;
+
+  // Статусы для сигнализации (0=норма, 1=предупреждение, 2=авария)
+  int get emkStatus {
+    if (_hEmk >= vEmk * 0.95 || _hEmk <= vEmk * 0.05) return 2;
+    if (_hEmk >= vEmk * 0.85 || _hEmk <= vEmk * 0.15) return 1;
+    return 0;
+  }
+
+  int get chemStatus {
+    if (_hChem >= vChem * 0.95 || _hChem <= vChem * 0.05) return 2;
+    if (_hChem >= vChem * 0.85 || _hChem <= vChem * 0.15) return 1;
+    return 0;
+  }
 
   void setKValve1(double v) {
     _kValve1 = v.clamp(0.0, 1.0);
@@ -57,16 +80,75 @@ class ImitationModel extends ChangeNotifier {
   }
 
   void setQOut(double v) {
-    _qOut = v.clamp(50.0, 250.0);
+    _qOutTarget = v.clamp(qOutMin, qOutMax);
+    notifyListeners();
+  }
+
+  void setSpeed(double v) {
+    _speed = v.clamp(1.0, 10.0);
+    notifyListeners();
+  }
+
+  void start() {
+    if (_running) return;
+    _running = true;
+    _timer = Timer.periodic(const Duration(milliseconds: 50), (_) => tick());
+    notifyListeners();
+  }
+
+  void stop() {
+    _running = false;
+    _timer?.cancel();
+    _timer = null;
     notifyListeners();
   }
 
   void reset() {
+    stop();
     _hEmk = 1000.0;
     _hChem = 400.0;
     _kValve1 = 0.5;
     _kValve2 = 0.5;
     _qOut = 100.0;
+    _qOutTarget = 100.0;
+    _tickCount = 0;
     notifyListeners();
+  }
+
+  /// Один шаг симуляции (каждые 50 мс)
+  void tick() {
+    if (!_running) return;
+    _tickCount++;
+
+    // dt — эффективный шаг времени в часах
+    // 50 мс * speed / 3600 = часы
+    final double dt = 0.05 * _speed / 3600.0;
+
+    // --- Регулятор: каждые ~2 сек (реального времени) меняет уставку ---
+    if (_tickCount % (40 ~/ _speed.clamp(1, 10)) == 0) {
+      // Случайный скачок: -80..+80 т/ч
+      _qOutTarget = (_qOutTarget + (_rng.nextDouble() - 0.5) * 160)
+          .clamp(qOutMin, qOutMax);
+    }
+
+    // Плавное движение регулятора к цели
+    _qOut += (_qOutTarget - _qOut) * 0.1;
+    _qOut = _qOut.clamp(qOutMin, qOutMax);
+
+    // Изменение объёма Ёмкости: balance * dt (тонны = м³)
+    final double demk = emkBalance * dt;
+    _hEmk = (_hEmk + demk).clamp(0.0, vEmk);
+
+    // Изменение объёма Химцеха
+    final double dchem = chemBalance * dt;
+    _hChem = (_hChem + dchem).clamp(0.0, vChem);
+
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 }

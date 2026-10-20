@@ -8,24 +8,14 @@ class TankVisualizer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use the last data point
     final int last = data.time.length - 1;
     final hEmk = data.hEmk[last];
     final hChem = data.hChem[last];
-    final hDea = data.hDea[last];
-
-    final hEmkNorm = (hEmk - SystemSimulation.hEmkMin) /
-        (SystemSimulation.hEmkMax - SystemSimulation.hEmkMin);
-    final hChemNorm = (hChem - SystemSimulation.hChemMin) /
-        (SystemSimulation.hChemMax - SystemSimulation.hChemMin);
-    final hDeaNorm = (hDea - SystemSimulation.hDeaMin) /
-        (SystemSimulation.hDeaMax - SystemSimulation.hDeaMin);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Title
           const Text(
             'Визуализация наполнения ёмкостей',
             style: TextStyle(
@@ -41,36 +31,36 @@ class TankVisualizer extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // Flow arrows at top
-          _buildFlowArrows(data, last),
+          // Flow diagram
+          _buildFlowDiagram(data, last),
           const SizedBox(height: 20),
 
-          // Three tanks row
+          // Two tanks
           Row(
             children: [
-              Expanded(child: _buildTank(context, 'Ёмкость', hEmk, hEmkNorm,
-                  SystemSimulation.hEmkMin, SystemSimulation.hEmkMax,
-                  Colors.green, Icons.water_drop)),
+              Expanded(child: _buildTank(
+                'Ёмкость\n2000 м³', hEmk, SystemSimulation.vEmk,
+                SystemSimulation.hEmkMin, SystemSimulation.hEmkMax,
+                Colors.green,
+              )),
               const SizedBox(width: 8),
-              Expanded(child: _buildTank(context, 'Химцех', hChem, hChemNorm,
-                  SystemSimulation.hChemMin, SystemSimulation.hChemMax,
-                  Colors.orange, Icons.science)),
-              const SizedBox(width: 8),
-              Expanded(child: _buildTank(context, 'Деаэратор', hDea, hDeaNorm,
-                  SystemSimulation.hDeaMin, SystemSimulation.hDeaMax,
-                  Colors.purple, Icons.opacity)),
+              Expanded(child: _buildTank(
+                'Бак химцеха\n800 м³', hChem, SystemSimulation.vChem,
+                SystemSimulation.hChemMin, SystemSimulation.hChemMax,
+                Colors.orange,
+              )),
             ],
           ),
           const SizedBox(height: 24),
 
-          // Legend / status info
+          // Status info
           _buildStatusInfo(data, last),
         ],
       ),
     );
   }
 
-  Widget _buildFlowArrows(SimulationResult data, int last) {
+  Widget _buildFlowDiagram(SimulationResult data, int last) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -79,48 +69,36 @@ class TankVisualizer extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // First row: Ввод -> З1 -> Ёмкость -> ППН -> ПСВ -> Химцех
+          // Row 1: Ввод → Задвижка 1 → Ёмкость
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _flowNode('Ввод', data.qIn[last], Colors.blue),
               _flowArrow(),
-              _flowNode('З1', data.qZ1[last], Colors.cyan),
+              _flowNode('Задв.1', data.qValve1[last], Colors.cyan),
               _flowArrow(),
               _flowNode('Ёмкость', null, Colors.green),
-              _flowArrow(),
-              _flowNode('ППН', data.qPpn[last], Colors.green),
-              _flowArrow(),
-              _flowNode('ПСВ', data.qPsv[last], Colors.cyan),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Row 2: Ёмкость → Задвижка 2 → Химцех
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              const SizedBox(width: 60),
+              _flowNode('Задв.2', data.qValve2[last], Colors.teal),
               _flowArrow(),
               _flowNode('Химцех', null, Colors.orange),
             ],
           ),
           const SizedBox(height: 8),
-          // Second row: Химцех -> НХОВ -> Деаэратор -> Рег2 -> Потребитель
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              const SizedBox(width: 60),
-              _flowNode('НХОВ', data.qNchov[last], Colors.orange),
-              _flowArrow(),
-              _flowNode('Деаэратор', null, Colors.purple),
-              _flowArrow(),
-              _flowNode('Рег2', data.qReg2[last], Colors.brown),
-              _flowArrow(),
-              _flowNode('Потребитель', data.qOut[last], Colors.red),
-              const SizedBox(width: 60),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Third row: Рег1 branch
+          // Row 3: Химцех → Выход
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _flowNode('Рег1', data.qReg1[last], Colors.pink),
-              _flowArrow(),
-              const Text('→ в Деаэратор',
-                  style: TextStyle(fontSize: 11, color: Colors.pink)),
+              const SizedBox(width: 120),
+              _flowNode('Выход', data.qOut[last], Colors.red),
+              const SizedBox(width: 120),
             ],
           ),
         ],
@@ -141,11 +119,7 @@ class TankVisualizer extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
           ),
         ),
         if (value != null)
@@ -162,23 +136,17 @@ class TankVisualizer extends StatelessWidget {
   }
 
   Widget _buildTank(
-    BuildContext context,
     String name,
     double level,
-    double levelNorm,
+    double maxVolume,
     double minLevel,
     double maxLevel,
     Color color,
-    IconData icon,
   ) {
-    final levelClamped = levelNorm.clamp(0.0, 1.0);
-    final isOver = level > maxLevel;
-    final isUnder = level < minLevel;
-    final statusColor = isOver
-        ? Colors.red
-        : isUnder
-            ? Colors.amber
-            : color;
+    final double percent = (level / maxVolume * 100).clamp(0.0, 100.0);
+    final bool isOver = level > maxLevel;
+    final bool isUnder = level < minLevel;
+    final statusColor = isOver ? Colors.red : (isUnder ? Colors.amber : color);
 
     return Container(
       decoration: BoxDecoration(
@@ -193,21 +161,10 @@ class TankVisualizer extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Tank name
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 4),
-              Text(
-                name,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-            ],
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white70),
           ),
           const SizedBox(height: 8),
           // Tank body
@@ -216,7 +173,7 @@ class TankVisualizer extends StatelessWidget {
             child: CustomPaint(
               size: const Size(double.infinity, 140),
               painter: _TankPainter(
-                level: levelClamped,
+                level: percent / 100.0,
                 color: color,
                 isOver: isOver,
                 isUnder: isUnder,
@@ -226,17 +183,12 @@ class TankVisualizer extends StatelessWidget {
           const SizedBox(height: 6),
           // Level value
           Text(
-            '${level.toStringAsFixed(2)} м',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: statusColor,
-            ),
+            '${level.toStringAsFixed(0)} м³',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: statusColor),
           ),
-          // Range
           Text(
-            'норма: ${minLevel.toStringAsFixed(1)}-${maxLevel.toStringAsFixed(1)} м',
-            style: TextStyle(fontSize: 9, color: Colors.grey[500]),
+            '${percent.toStringAsFixed(1)}%',
+            style: TextStyle(fontSize: 10, color: Colors.grey[500]),
           ),
           if (isOver)
             const Padding(
@@ -263,22 +215,16 @@ class TankVisualizer extends StatelessWidget {
     final issues = <String>[];
 
     if (data.hEmk[last] > SystemSimulation.hEmkMax) {
-      issues.add('Ёмкость переполнена (${data.hEmk[last].toStringAsFixed(2)} м)');
+      issues.add('Ёмкость переполнена (${data.hEmk[last].toStringAsFixed(0)} м³)');
     }
     if (data.hEmk[last] < SystemSimulation.hEmkMin) {
-      issues.add('Ёмкость почти пуста (${data.hEmk[last].toStringAsFixed(2)} м)');
+      issues.add('Ёмкость почти пуста (${data.hEmk[last].toStringAsFixed(0)} м³)');
     }
     if (data.hChem[last] > SystemSimulation.hChemMax) {
-      issues.add('Химцех переполнен (${data.hChem[last].toStringAsFixed(2)} м)');
+      issues.add('Химцех переполнен (${data.hChem[last].toStringAsFixed(0)} м³)');
     }
     if (data.hChem[last] < SystemSimulation.hChemMin) {
-      issues.add('Химцех почти пуст (${data.hChem[last].toStringAsFixed(2)} м)');
-    }
-    if (data.hDea[last] > SystemSimulation.hDeaMax) {
-      issues.add('Деаэратор переполнен (${data.hDea[last].toStringAsFixed(2)} м)');
-    }
-    if (data.hDea[last] < SystemSimulation.hDeaMin) {
-      issues.add('Деаэратор почти пуст (${data.hDea[last].toStringAsFixed(2)} м)');
+      issues.add('Химцех почти пуст (${data.hChem[last].toStringAsFixed(0)} м³)');
     }
 
     if (issues.isEmpty) {
@@ -297,41 +243,31 @@ class TankVisualizer extends StatelessWidget {
         children: [
           const Text(
             'Статус системы:',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.white70,
-            ),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white70),
           ),
           const SizedBox(height: 6),
           ...issues.map((issue) => Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Row(
-                  children: [
-                    Icon(
-                      issue.contains('норме')
-                          ? Icons.check_circle
-                          : Icons.warning_amber,
-                      size: 14,
-                      color: issue.contains('норме')
-                          ? Colors.green
-                          : Colors.amber,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        issue,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: issue.contains('норме')
-                              ? Colors.green[300]
-                              : Colors.amber[200],
-                        ),
-                      ),
-                    ),
-                  ],
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Row(
+              children: [
+                Icon(
+                  issue.contains('норме') ? Icons.check_circle : Icons.warning_amber,
+                  size: 14,
+                  color: issue.contains('норме') ? Colors.green : Colors.amber,
                 ),
-              )),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    issue,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: issue.contains('норме') ? Colors.green[300] : Colors.amber[200],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )),
         ],
       ),
     );
@@ -353,17 +289,16 @@ class _TankPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white24
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
     final rect = RRect.fromRectAndRadius(
       Rect.fromLTWH(4, 4, size.width - 8, size.height - 8),
       const Radius.circular(6),
     );
 
-    // Draw tank outline
+    // Tank outline
+    final paint = Paint()
+      ..color = Colors.white24
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
     canvas.drawRRect(rect, paint);
 
     // Draw water
@@ -378,13 +313,13 @@ class _TankPainter extends CustomPainter {
         const Radius.circular(3),
       );
       final waterPaint = Paint()
-        ..color = color.withOpacity(0.5)
+        ..color = const Color(0xFF2196F3).withOpacity(0.6)
         ..style = PaintingStyle.fill;
       canvas.drawRRect(waterRect, waterPaint);
 
       // Water surface line
       final surfacePaint = Paint()
-        ..color = color.withOpacity(0.8)
+        ..color = const Color(0xFF64B5F6).withOpacity(0.8)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5;
       final surfaceY = size.height - 4 - (size.height - 8) * level;
@@ -394,28 +329,6 @@ class _TankPainter extends CustomPainter {
         surfacePaint,
       );
     }
-
-    // Draw min/max markers on the right side
-    final markerPaint = Paint()
-      ..color = Colors.white38
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.5;
-
-    // Min marker (at bottom)
-    final minY = size.height - 4 - (size.height - 8) * 0.1; // ~10% for visual
-    canvas.drawLine(
-      Offset(size.width - 12, minY),
-      Offset(size.width - 4, minY),
-      markerPaint,
-    );
-
-    // Max marker (at top)
-    final maxY = size.height - 4 - (size.height - 8) * 0.9; // ~90% for visual
-    canvas.drawLine(
-      Offset(size.width - 12, maxY),
-      Offset(size.width - 4, maxY),
-      markerPaint,
-    );
 
     // Warning border
     if (isOver || isUnder) {
