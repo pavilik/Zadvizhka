@@ -190,81 +190,63 @@ class _ImitationScreenState extends State<ImitationScreen> {
   Widget _buildFlowDiagram() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: const Color(0xFF2D2D44),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // Row 1: Ввод → З1 → Ёмкость
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _flowNode('Ввод', '300 т/ч', Colors.blue),
-              _arrow(),
-              _flowNodeEditable(
-                'Задвижка 1',
-                _model.qValve1,
-                _model.kValve1 * 100,
-                Colors.cyan,
-                step: 1,
-                onIncrease: () => _model.setQValve1(_model.qValve1 + 1),
-                onDecrease: () => _model.setQValve1(_model.qValve1 - 1),
-              ),
-              _arrow(),
-              _flowNode('Ёмкость', '${_model.hEmk.toStringAsFixed(0)} м³', _statusColor(_model.emkStatus)),
-            ],
+          _flowNode('Ввод', '300', Colors.blue, compact: true),
+          _arrow(),
+          _flowNodeEditable(
+            'З1',
+            _model.qValve1,
+            _model.kValve1 * 100,
+            Colors.cyan,
+            step: 1,
+            onIncrease: () => _model.setQValve1(_model.qValve1 + 1),
+            onDecrease: () => _model.setQValve1(_model.qValve1 - 1),
           ),
-          const SizedBox(height: 4),
-          // Row 2: Ёмкость → Задвижка 2 → Химцех
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              const SizedBox(width: 60),
-              _flowNodeEditable(
-                'Задвижка 2',
-                _model.qValve2,
-                _model.kValve2 * 100,
-                Colors.teal,
-                step: 1,
-                onIncrease: () => _model.setQValve2(_model.qValve2 + 1),
-                onDecrease: () => _model.setQValve2(_model.qValve2 - 1),
-              ),
-              _arrow(),
-              _flowNode('Бак химцеха', '${_model.hChem.toStringAsFixed(0)} м³', _statusColor(_model.chemStatus)),
-            ],
+          _arrow(),
+          _flowNode('Ёмкость', '${_model.hEmk.toStringAsFixed(0)}', _statusColor(_model.emkStatus), compact: true),
+          _arrow(),
+          _flowNodeEditable(
+            'З2',
+            _model.qValve2,
+            _model.kValve2 * 100,
+            Colors.teal,
+            step: 1,
+            onIncrease: () => _model.setQValve2(_model.qValve2 + 1),
+            onDecrease: () => _model.setQValve2(_model.qValve2 - 1),
           ),
-          const SizedBox(height: 4),
-          // Row 3: Химцех → Подпитка → Выход
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(width: 100),
-              _flowNodeEditable(
-                'Подпитка',
-                _model.qOut,
-                null,
-                Colors.red,
-                step: 1,
-                onIncrease: () => _model.setQOut(_model.qOut + 1),
-                onDecrease: () => _model.setQOut(_model.qOut - 1),
-                isRandom: _model.randomQOut,
-              ),
-              _arrow(),
-              _flowNode('Выход', '${_model.qOut.toStringAsFixed(0)} т/ч', Colors.red),
-            ],
+          _arrow(),
+          _flowNode('Химцех', '${_model.hChem.toStringAsFixed(0)}', _statusColor(_model.chemStatus), compact: true),
+          _arrow(),
+          _flowNodeEditable(
+            'Пит',
+            _model.qOut,
+            null,
+            Colors.red,
+            step: 1,
+            onIncrease: () => _model.setQOut(_model.qOut + 1),
+            onDecrease: () => _model.setQOut(_model.qOut - 1),
+            isRandom: _model.randomQOut,
           ),
+          _arrow(),
+          _flowNode('Выход', '${_model.qOut.toStringAsFixed(0)}', Colors.red, compact: true),
         ],
       ),
     );
   }
 
-  Widget _flowNode(String label, String value, Color color) {
+  Widget _flowNode(String label, String value, Color color, {bool compact = false}) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 6, vertical: compact ? 1 : 2),
           decoration: BoxDecoration(
             color: color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(4),
@@ -272,13 +254,13 @@ class _ImitationScreenState extends State<ImitationScreen> {
           ),
           child: Text(
             label,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+            style: TextStyle(fontSize: compact ? 8 : 10, fontWeight: FontWeight.w600, color: color),
           ),
         ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: TextStyle(fontSize: 10, color: color),
+          style: TextStyle(fontSize: compact ? 8 : 10, color: color),
         ),
       ],
     );
@@ -296,9 +278,10 @@ class _ImitationScreenState extends State<ImitationScreen> {
     bool isRandom = false,
   }) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
           decoration: BoxDecoration(
             color: color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(4),
@@ -306,43 +289,43 @@ class _ImitationScreenState extends State<ImitationScreen> {
           ),
           child: Text(
             label,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+            style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: Colors.white),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         // Кнопки +/- и значение
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: Icon(Icons.remove_circle_outline, size: 22),
+              icon: const Icon(Icons.remove_circle_outline, size: 16),
               color: isRandom ? Colors.grey : Colors.red,
               onPressed: isRandom ? null : onDecrease,
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 2),
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '${value.toStringAsFixed(0)} т/ч',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color),
+                  value.toStringAsFixed(0),
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
                 ),
                 if (percentage != null)
                   Text(
                     '${percentage.toStringAsFixed(0)}%',
-                    style: TextStyle(fontSize: 8, color: color.withOpacity(0.7)),
+                    style: const TextStyle(fontSize: 7, color: Colors.white54),
                   ),
               ],
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 2),
             IconButton(
-              icon: Icon(Icons.add_circle_outline, size: 22),
+              icon: const Icon(Icons.add_circle_outline, size: 16),
               color: isRandom ? Colors.grey : Colors.green,
               onPressed: isRandom ? null : onIncrease,
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
             ),
           ],
         ),
@@ -350,7 +333,7 @@ class _ImitationScreenState extends State<ImitationScreen> {
     );
   }
 
-  Widget _arrow() => const Icon(Icons.arrow_forward, size: 14, color: Colors.white38);
+  Widget _arrow() => const Icon(Icons.arrow_forward, size: 12, color: Colors.white38);
 
   /// Цвет статуса: 0=синий(норма), 1=жёлтый(внимание), 2=красный(авария)
   Color _statusColor(int status) {
