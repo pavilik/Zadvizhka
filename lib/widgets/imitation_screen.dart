@@ -204,11 +204,20 @@ class _ImitationScreenState extends State<ImitationScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _flowNode('Ввод', '${ImitationModel.qInMax} т/ч', Colors.blue),
+              _flowNode('Ввод', '${ImitationModel.qInMax} т/ч', Colors.blue, editable: false),
               _arrow(),
-              _flowNode('Задвижка 1', '${_model.qThroughValve1.toStringAsFixed(0)} т/ч', Colors.cyan),
+              _flowNodeEditable(
+                'Задвижка 1',
+                _model.qThroughValve1,
+                Colors.cyan,
+                minQ: 0,
+                maxQ: ImitationModel.qInMax,
+                step: 10,
+                onIncrease: () => _model.setQValve1(_model.qThroughValve1 + 10),
+                onDecrease: () => _model.setQValve1(_model.qThroughValve1 - 10),
+              ),
               _arrow(),
-              _flowNode('Ёмкость', '${_model.hEmk.toStringAsFixed(0)} м³', Colors.blue),
+              _flowNode('Ёмкость', '${_model.hEmk.toStringAsFixed(0)} м³', _statusColor(_model.emkStatus)),
             ],
           ),
           const SizedBox(height: 4),
@@ -217,9 +226,18 @@ class _ImitationScreenState extends State<ImitationScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               const SizedBox(width: 60),
-              _flowNode('Задвижка 2', '${_model.qThroughValve2.toStringAsFixed(0)} т/ч', Colors.teal),
+              _flowNodeEditable(
+                'Задвижка 2',
+                _model.qThroughValve2,
+                Colors.teal,
+                minQ: 0,
+                maxQ: ImitationModel.qInMax,
+                step: 10,
+                onIncrease: () => _model.setQValve2(_model.qThroughValve2 + 10),
+                onDecrease: () => _model.setQValve2(_model.qThroughValve2 - 10),
+              ),
               _arrow(),
-              _flowNode('Бак химцеха', '${_model.hChem.toStringAsFixed(0)} м³', Colors.orange),
+              _flowNode('Бак химцеха', '${_model.hChem.toStringAsFixed(0)} м³', _statusColor(_model.chemStatus)),
             ],
           ),
           const SizedBox(height: 4),
@@ -228,9 +246,18 @@ class _ImitationScreenState extends State<ImitationScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(width: 100),
-              _flowNodeRegulator('Регулятор', '${_model.qOut.toStringAsFixed(0)} т/ч'),
+              _flowNodeEditable(
+                'Подпитка',
+                _model.qOut,
+                Colors.red,
+                minQ: ImitationModel.qOutMin,
+                maxQ: ImitationModel.qOutMax,
+                step: 10,
+                onIncrease: () => _model.setQOut(_model.qOut + 10),
+                onDecrease: () => _model.setQOut(_model.qOut - 10),
+              ),
               _arrow(),
-              _flowNode('Выход (подпитка)', '${_model.qOut.toStringAsFixed(0)} т/ч', Colors.red),
+              _flowNode('Выход', '${_model.qOut.toStringAsFixed(0)} т/ч', Colors.red),
             ],
           ),
         ],
@@ -238,7 +265,7 @@ class _ImitationScreenState extends State<ImitationScreen> {
     );
   }
 
-  Widget _flowNode(String label, String value, Color color) {
+  Widget _flowNode(String label, String value, Color color, {bool editable = false}) {
     return Column(
       children: [
         Container(
@@ -262,27 +289,57 @@ class _ImitationScreenState extends State<ImitationScreen> {
     );
   }
 
-  /// Зелёный треугольник ▲ для автоматического регулятора
-  Widget _flowNodeRegulator(String label, String value) {
+  /// Редактируемый узел схемы с кнопками +/-
+  Widget _flowNodeEditable(
+    String label,
+    double value,
+    Color color, {
+    required double minQ,
+    required double maxQ,
+    required double step,
+    required VoidCallback onIncrease,
+    required VoidCallback onDecrease,
+  }) {
     return Column(
       children: [
-        const Icon(Icons.play_arrow, size: 24, color: Colors.green),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.15),
+            color: color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.green.withOpacity(0.4), width: 1),
+            border: Border.all(color: color.withOpacity(0.4), width: 1),
           ),
           child: Text(
             label,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.green),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 10, color: Colors.green),
+        const SizedBox(height: 4),
+        // Кнопки +/-
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.remove_circle_outline, size: 22),
+              color: Colors.red,
+              onPressed: onDecrease,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '${value.toStringAsFixed(0)} т/ч',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline, size: 22),
+              color: Colors.green,
+              onPressed: onIncrease,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            ),
+          ],
         ),
       ],
     );
@@ -350,7 +407,7 @@ class _ImitationScreenState extends State<ImitationScreen> {
             height: 120,
             child: CustomPaint(
               size: const Size(double.infinity, 120),
-              painter: _TankPainter(level: percent / 100.0, statusColor: color),
+              painter: _TankPainter(level: percent / 100.0, statusColor: color, status: status),
             ),
           ),
           const SizedBox(height: 6),
@@ -625,8 +682,9 @@ class _ImitationScreenState extends State<ImitationScreen> {
 class _TankPainter extends CustomPainter {
   final double level;
   final Color statusColor;
+  final int status;
 
-  _TankPainter({required this.level, required this.statusColor});
+  _TankPainter({required this.level, required this.statusColor, required this.status});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -642,8 +700,24 @@ class _TankPainter extends CustomPainter {
       ..strokeWidth = 1.5;
     canvas.drawRRect(rect, borderPaint);
 
-    // Draw blue water
+    // Draw water with color based on status
     if (level > 0) {
+      Color waterColor;
+      Color surfaceColor;
+      switch (status) {
+        case 2: // Авария - красный
+          waterColor = const Color(0xFFE53935);
+          surfaceColor = const Color(0xFFEF5350);
+          break;
+        case 1: // Внимание - жёлтый
+          waterColor = const Color(0xFFFFC107);
+          surfaceColor = const Color(0xFFFFD54F);
+          break;
+        default: // Норма - синий
+          waterColor = const Color(0xFF2196F3);
+          surfaceColor = const Color(0xFF64B5F6);
+      }
+
       final waterRect = RRect.fromRectAndRadius(
         Rect.fromLTWH(
           4,
@@ -654,13 +728,13 @@ class _TankPainter extends CustomPainter {
         const Radius.circular(3),
       );
       final waterPaint = Paint()
-        ..color = const Color(0xFF2196F3).withOpacity(0.6)
+        ..color = waterColor.withOpacity(0.6)
         ..style = PaintingStyle.fill;
       canvas.drawRRect(waterRect, waterPaint);
 
       // Water surface line
       final surfacePaint = Paint()
-        ..color = const Color(0xFF64B5F6).withOpacity(0.8)
+        ..color = surfaceColor.withOpacity(0.8)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5;
       final surfaceY = size.height - 4 - (size.height - 8) * level;
@@ -684,6 +758,6 @@ class _TankPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TankPainter oldDelegate) {
-    return oldDelegate.level != level || oldDelegate.statusColor != statusColor;
+    return oldDelegate.level != level || oldDelegate.statusColor != statusColor || oldDelegate.status != status;
   }
 }

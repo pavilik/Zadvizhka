@@ -176,6 +176,18 @@ class ImitationModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Изменить поток через Задвижку 1 напрямую (в т/ч)
+  void setQValve1(double q) {
+    _kValve1 = (q / qInMax).clamp(0.0, 1.0);
+    notifyListeners();
+  }
+
+  /// Изменить поток через Задвижку 2 напрямую (в т/ч)
+  void setQValve2(double q) {
+    _kValve2 = (q / qInMax).clamp(0.0, 1.0);
+    notifyListeners();
+  }
+
   void setRandomQOut(bool v) {
     _randomQOut = v;
     notifyListeners();
