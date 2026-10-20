@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/simulation.dart';
 import 'flow_chart.dart';
@@ -5,6 +6,11 @@ import 'level_chart.dart';
 import 'regulator_chart.dart';
 import 'tank_visualizer.dart';
 import 'imitation_screen.dart';
+
+// UTF-8 encoded Russian strings (dart2js strips non-ASCII)
+final _kImitation = String.fromCharCodes([
+  0x0418, 0x043c, 0x0438, 0x0442, 0x0430, 0x0446, 0x0438, 0x044f
+]); // "Имитация"
 
 class SimulationScreen extends StatefulWidget {
   const SimulationScreen({super.key});
@@ -111,7 +117,7 @@ class _SimulationScreenState extends State<SimulationScreen> {
                 ),
                 _buildChartPage(
                   ImitationScreen(),
-                  'Имитация',
+                  _kImitation,
                   Icons.tune,
                 ),
               ],
