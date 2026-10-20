@@ -29,7 +29,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "693635b5258fe5f1cda720cf224f158c
 "icons/Icon-maskable-192.png": "c457ef57daa1d16f64b27b786ec2ea3c",
 "icons/Icon-maskable-512.png": "301a7604d45b3e739efc881eb04896ea",
 "index.html": "e6cd91513e4e8daa13422aa7d7daa325",
-"/": "e6cd91513e4e8daa13422aa7d7daa325",
+"/Zadvizhka/": "e6cd91513e4e8daa13422aa7d7daa325",
 "main.dart.js": "f59daeb621071ca7debcc801060234c5",
 "manifest.json": "8559fab3e9fe4f91d4c368c7df72017c",
 "version.json": "e0c0b5c02a099fcaff2f3968718cac03"};
