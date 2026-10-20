@@ -1,137 +1,72 @@
-import 'dart:math';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
+/// Модель имитации по схеме:
+/// Ввод(300 т/ч) → ЗАДВИЖКА 1 → ЁМКОСТЬ 2000 м³ → ЗАДВИЖКА 2 → БАК ХИМЦЕХА 800 м³
+/// → РЕГУЛЯТОР АВТОМАТИЧЕСКИЙ → ВЫХОД(подпитка) 50–250 т/ч
 class ImitationModel extends ChangeNotifier {
-  // Tank levels (0.0 = empty, 1.0 = full)
-  double _hEmk = 0.5;
-  double _hChem = 0.5;
-  double _hDea = 0.5;
+  // Ёмкость: 2000 м³
+  double _hEmk = 1000.0;
+  static const double vEmk = 2000.0;
+  static const double hEmkMin = 0.0;
+  static const double hEmkMax = 2000.0;
 
-  // Gate valve positions (0.0 = closed, 1.0 = fully open)
-  double _kZ1 = 0.5;
-  double _kPsv = 0.5;
-  double _kPpn = 0.5; // pump speed
+  // Химцех: 800 м³
+  double _hChem = 400.0;
+  static const double vChem = 800.0;
+  static const double hChemMin = 0.0;
+  static const double hChemMax = 800.0;
 
-  // Inflow / outflow rates (units per tick)
-  double _qIn = 0.3;
-  double _qOut = 0.2;
+  // Задвижка 1 — на входе в ёмкость (0–100%)
+  double _kValve1 = 0.5;
 
-  bool _randomMode = false;
-  bool _running = false;
-  int _tickCount = 0;
+  // Задвижка 2 — между ёмкостью и химцехом (0–100%)
+  double _kValve2 = 0.5;
 
-  final Random _rng = Random();
+  // Ввод: фиксированный 300 т/ч
+  static const double qInMax = 300.0;
 
-  // Getters
+  // Подпитка (выход): автоматический регулятор, 50–250 т/ч
+  double _qOut = 100.0;
+
+  // --- Getters ---
   double get hEmk => _hEmk;
   double get hChem => _hChem;
-  double get hDea => _hDea;
-  double get kZ1 => _kZ1;
-  double get kPsv => _kPsv;
-  double get kPpn => _kPpn;
-  double get qIn => _qIn;
+  double get kValve1 => _kValve1;
+  double get kValve2 => _kValve2;
   double get qOut => _qOut;
-  bool get randomMode => _randomMode;
-  bool get running => _running;
-  int get tickCount => _tickCount;
 
-  // Tank limits (for visual reference)
-  static const double hEmkMin = 0.1;
-  static const double hEmkMax = 0.9;
-  static const double hChemMin = 0.1;
-  static const double hChemMax = 0.9;
-  static const double hDeaMin = 0.1;
-  static const double hDeaMax = 0.9;
+  // Расчёты потоков
+  double get qThroughValve1 => _kValve1 * qInMax;  // через Задвижку 1
+  double get qThroughValve2 => _kValve2 * qThroughValve1; // через Задвижку 2
+  double get qOutReal => _qOut;                     // на выход (подпитка)
 
-  void setKZ1(double v) {
-    _kZ1 = v;
+  // Баланс для Ёмкости: приток - отток
+  double get emkBalance => qThroughValve1 - qThroughValve2;
+
+  // Баланс для Химцеха: приток - отток
+  double get chemBalance => qThroughValve2 - _qOut;
+
+  void setKValve1(double v) {
+    _kValve1 = v.clamp(0.0, 1.0);
     notifyListeners();
   }
 
-  void setKPsv(double v) {
-    _kPsv = v;
-    notifyListeners();
-  }
-
-  void setKPpn(double v) {
-    _kPpn = v;
-    notifyListeners();
-  }
-
-  void setQIn(double v) {
-    _qIn = v;
+  void setKValve2(double v) {
+    _kValve2 = v.clamp(0.0, 1.0);
     notifyListeners();
   }
 
   void setQOut(double v) {
-    _qOut = v;
-    notifyListeners();
-  }
-
-  void setRandomMode(bool v) {
-    _randomMode = v;
+    _qOut = v.clamp(50.0, 250.0);
     notifyListeners();
   }
 
   void reset() {
-    _hEmk = 0.5;
-    _hChem = 0.5;
-    _hDea = 0.5;
-    _tickCount = 0;
-    notifyListeners();
-  }
-
-  void start() {
-    _running = true;
-    notifyListeners();
-  }
-
-  void stop() {
-    _running = false;
-    notifyListeners();
-  }
-
-  /// Perform one simulation step.
-  void tick() {
-    if (!_running) return;
-
-    _tickCount++;
-
-    // Flow through Z1: proportional to kZ1 and qIn
-    final double qZ1 = _kZ1 * _qIn;
-
-    // Flow through PPN: pump rate
-    final double qPpn = _kPpn * 0.25;
-
-    // Flow through PSV: proportional to kPsv and qPpn
-    final double qPsv = _kPsv * qPpn;
-
-    // Chemical treatment flow
-    final double qChem = qPsv * 0.8;
-
-    // Regulator 1: sends water to deaerator based on deaerator level error
-    final double deaTarget = (hDeaMin + hDeaMax) / 2;
-    final double deaError = deaTarget - _hDea;
-    final double qReg1 = (0.1 + deaError * 0.3).clamp(0.0, 0.3);
-
-    // Regulator 2: outflow from deaerator to consumer
-    // Random mode adds noise only to outflow (consumption)
-    final double outflowNoise = _randomMode ? (_rng.nextDouble() - 0.5) * 0.3 : 0.0;
-    final double qReg2 = _qOut * (0.5 + outflowNoise);
-
-    // --- Update tank levels ---
-    // Емкость: receives from Z1, sends to PPN
-    _hEmk += (qZ1 - qPpn) * 0.02;
-    _hEmk = _hEmk.clamp(hEmkMin - 0.05, hEmkMax + 0.05);
-
-    // Химцех: receives from PSV, sends to chemical treatment
-    _hChem += (qPsv - qChem) * 0.015;
-    _hChem = _hChem.clamp(hChemMin - 0.05, hChemMax + 0.05);
-
-    // Деаэратор: receives from Reg1, sends to Reg2
-    _hDea += (qReg1 - qReg2) * 0.01;
-    _hDea = _hDea.clamp(hDeaMin - 0.05, hDeaMax + 0.05);
-
+    _hEmk = 1000.0;
+    _hChem = 400.0;
+    _kValve1 = 0.5;
+    _kValve2 = 0.5;
+    _qOut = 100.0;
     notifyListeners();
   }
 }
