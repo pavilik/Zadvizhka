@@ -53,6 +53,8 @@ class _ImitationScreenState extends State<ImitationScreen> {
                       _model.hEmk,
                       ImitationModel.vEmk,
                       _model.emkStatus,
+                      _model.emkDirection,
+                      _model.emkTimeToAlarm,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -62,6 +64,8 @@ class _ImitationScreenState extends State<ImitationScreen> {
                       _model.hChem,
                       ImitationModel.vChem,
                       _model.chemStatus,
+                      _model.chemDirection,
+                      _model.chemTimeToAlarm,
                     ),
                   ),
                 ],
@@ -148,13 +152,13 @@ class _ImitationScreenState extends State<ImitationScreen> {
               ),
             ],
           ),
-          // Tick counter
+          // Симулированное время
           if (_model.running)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(
-                'Тик: ${_model.tickCount}',
-                style: TextStyle(fontSize: 9, color: Colors.grey[600]),
+                'Время: ${_model.simulatedTimeFormatted}',
+                style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.w600),
               ),
             ),
         ],
@@ -295,9 +299,23 @@ class _ImitationScreenState extends State<ImitationScreen> {
     }
   }
 
-  Widget _buildTank(String name, double level, double maxVolume, int status) {
+  Widget _buildTank(String name, double level, double maxVolume, int status, int direction, String? timeToAlarm) {
     final double percent = (level / maxVolume * 100).clamp(0.0, 100.0);
     final Color color = _statusColor(status);
+
+    // Стрелка направления
+    Widget directionIcon;
+    Color? directionColor;
+    if (direction > 0) {
+      directionIcon = const Icon(Icons.arrow_upward, size: 16, color: Colors.green);
+      directionColor = Colors.green;
+    } else if (direction < 0) {
+      directionIcon = const Icon(Icons.arrow_downward, size: 16, color: Colors.orange);
+      directionColor = Colors.orange;
+    } else {
+      directionIcon = const Icon(Icons.arrow_right, size: 16, color: Colors.grey);
+      directionColor = Colors.grey;
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -312,13 +330,22 @@ class _ImitationScreenState extends State<ImitationScreen> {
       child: Column(
         children: [
           // Name
-          Text(
-            name,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white70),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  name,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white70),
+                ),
+              ),
+              const SizedBox(width: 4),
+              directionIcon,
+            ],
           ),
           const SizedBox(height: 4),
-          // Tank with blue water
+          // Tank with colored water
           SizedBox(
             height: 120,
             child: CustomPaint(
@@ -336,7 +363,31 @@ class _ImitationScreenState extends State<ImitationScreen> {
             '${percent.toStringAsFixed(1)}%',
             style: TextStyle(fontSize: 11, color: Colors.grey[400]),
           ),
-          // Status indicator
+          // Прогноз времени до аварии
+          if (timeToAlarm != null && status < 2)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.red.withOpacity(0.5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, size: 12, color: Colors.red),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Авария: $timeToAlarm',
+                      style: const TextStyle(fontSize: 9, color: Colors.red, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          // Статус indicator
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -392,10 +443,31 @@ class _ImitationScreenState extends State<ImitationScreen> {
           ),
           const SizedBox(height: 2),
           Text(
-            'Задвижка 1 — приток в ёмкость, Задвижка 2 — отток из ёмкости в химцех.\n'
-            'Подпитка — автоматический регулятор (50–250 т/ч) с возмущениями.',
+            'Задвижка 1 — приток в ёмкость (300×k т/ч)\n'
+            'Задвижка 2 — отток из ёмкости (300×k т/ч)\n'
+            'Подпитка — расход из химцеха (50–250 т/ч)',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 8, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 2),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3D3D5C),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  'Ёмкость: приток − отток = 300×(k1−k2) т/ч',
+                  style: TextStyle(fontSize: 8, color: Colors.cyan[300]),
+                ),
+                Text(
+                  'Химцех: приток − расход = 300×k2 − Qпит т/ч',
+                  style: TextStyle(fontSize: 8, color: Colors.teal[300]),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           Row(
@@ -430,6 +502,9 @@ class _ImitationScreenState extends State<ImitationScreen> {
                 onChanged: (v) => _model.setQOut(
                     ImitationModel.qOutMin + v * (ImitationModel.qOutMax - ImitationModel.qOutMin)),
                 valueDisplay: '${_model.qOut.toStringAsFixed(0)} т/ч',
+                showRandomToggle: true,
+                isRandom: _model.randomQOut,
+                onRandomToggle: _model.setRandomQOut,
               ),
             ],
           ),
@@ -446,6 +521,9 @@ class _ImitationScreenState extends State<ImitationScreen> {
     required Color color,
     required ValueChanged<double> onChanged,
     required String valueDisplay,
+    bool showRandomToggle = false,
+    bool isRandom = false,
+    ValueChanged<bool>? onRandomToggle,
   }) {
     return Tooltip(
       message: hint,
@@ -474,6 +552,28 @@ class _ImitationScreenState extends State<ImitationScreen> {
             valueDisplay,
             style: TextStyle(fontSize: 10, color: color),
           ),
+          // Toggle для случайного/фиксированного режима
+          if (showRandomToggle)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    isRandom ? 'Случайно' : 'Фикс',
+                    style: TextStyle(fontSize: 7, color: isRandom ? Colors.green : Colors.blue),
+                  ),
+                  Switch(
+                    value: isRandom,
+                    onChanged: onRandomToggle,
+                    activeColor: Colors.green,
+                    inactiveThumbColor: Colors.blue,
+                    inactiveTrackColor: Colors.blue.withOpacity(0.3),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 2),
           // Up arrow
           IconButton(

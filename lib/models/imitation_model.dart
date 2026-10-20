@@ -33,6 +33,7 @@ class ImitationModel extends ChangeNotifier {
   // Подпитка (выход): автоматический регулятор, 50–250 т/ч
   double _qOut = 100.0;
   double _qOutTarget = 100.0;
+  bool _randomQOut = true; // true = случайные возмущения, false = фиксированное значение
   static const double qOutMin = 50.0;
   static const double qOutMax = 250.0;
 
@@ -49,9 +50,80 @@ class ImitationModel extends ChangeNotifier {
   double get kValve1 => _kValve1;
   double get kValve2 => _kValve2;
   double get qOut => _qOut;
+  bool get randomQOut => _randomQOut;
   bool get running => _running;
   double get speedSlider => _speedSlider;
   int get tickCount => _tickCount;
+
+  /// Симулированное время в часах
+  double get simulatedTimeHours => _tickCount * 0.05 * speed / 3600.0;
+
+  /// Форматированное время симуляции (ЧЧ:ММ)
+  String get simulatedTimeFormatted {
+    final hours = simulatedTimeHours.toInt();
+    final minutes = ((simulatedTimeHours - hours) * 60).toInt();
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
+  }
+
+  /// Прогноз времени до аварийного уровня для Ёмкости
+  /// Возвращает null если уровень безопасен или ёмкость уже пуста/полна
+  String? get emkTimeToAlarm {
+    final balance = emkBalance; // т/ч (положительный = наполнение, отрицательный = опорожнение)
+    if (balance > 0) {
+      // Наполнение — считаем время до 95% (авария)
+      final remaining = vEmk * 0.95 - _hEmk;
+      if (remaining > 0) {
+        final hours = remaining / balance;
+        return _formatDuration(hours);
+      }
+    } else if (balance < 0) {
+      // Опорожнение — считаем время до 5% (авария)
+      final remaining = _hEmk - vEmk * 0.05;
+      if (remaining > 0) {
+        final hours = remaining / (-balance);
+        return _formatDuration(hours);
+      }
+    }
+    return null; // Баланс 0 или уже аварийный уровень
+  }
+
+  /// Прогноз времени до аварийного уровня для Химцеха
+  String? get chemTimeToAlarm {
+    final balance = chemBalance;
+    if (balance > 0) {
+      final remaining = vChem * 0.95 - _hChem;
+      if (remaining > 0) {
+        final hours = remaining / balance;
+        return _formatDuration(hours);
+      }
+    } else if (balance < 0) {
+      final remaining = _hChem - vChem * 0.05;
+      if (remaining > 0) {
+        final hours = remaining / (-balance);
+        return _formatDuration(hours);
+      }
+    }
+    return null;
+  }
+
+  /// Форматирование длительности в ЧЧ:ММ
+  static String _formatDuration(double hours) {
+    if (hours < 1 / 60) {
+      final minutes = (hours * 60).toInt();
+      if (minutes < 1) return '<1 мин';
+      return '${minutes} мин';
+    }
+    final h = hours.toInt();
+    final m = ((hours - h) * 60).toInt();
+    if (h > 0) return '${h}ч ${m}м';
+    return '${m} мин';
+  }
+
+  /// Направление изменения уровня Ёмкости: 1=растёт, -1=падает, 0=стабильно
+  int get emkDirection => emkBalance > 0.1 ? 1 : (emkBalance < -0.1 ? -1 : 0);
+
+  /// Направление изменения уровня Химцеха
+  int get chemDirection => chemBalance > 0.1 ? 1 : (chemBalance < -0.1 ? -1 : 0);
 
   /// Реальная скорость симуляции (1x..5000x)
   double get speed {
@@ -104,6 +176,11 @@ class ImitationModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setRandomQOut(bool v) {
+    _randomQOut = v;
+    notifyListeners();
+  }
+
   void setSpeed(double v) {
     _speedSlider = v.clamp(0.0, 1.0);
     notifyListeners();
@@ -131,6 +208,7 @@ class ImitationModel extends ChangeNotifier {
     _kValve2 = 0.5;
     _qOut = 100.0;
     _qOutTarget = 100.0;
+    _randomQOut = true;
     _tickCount = 0;
     notifyListeners();
   }
@@ -147,7 +225,7 @@ class ImitationModel extends ChangeNotifier {
     // --- Регулятор: каждые ~2 сек реального времени меняет уставку ---
     // При ускорении регулятор дёргается чаще
     final int regulatorInterval = (40 / speed.clamp(1, 5000) * 40).round().clamp(1, 100);
-    if (_tickCount % regulatorInterval == 0) {
+    if (_randomQOut && _tickCount % regulatorInterval == 0) {
       // Случайный скачок: -80..+80 т/ч
       _qOutTarget = (_qOutTarget + (_rng.nextDouble() - 0.5) * 160)
           .clamp(qOutMin, qOutMax);
