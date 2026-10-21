@@ -76,98 +76,12 @@ class _SimulationScreenState extends State<SimulationScreen> {
       ),
       body: Column(
         children: [
-          // Offstage сохраняет состояние PageView и PageController
-          Offstage(
-            offstage: !_showExtraTabs,
-            child: Container(
-              color: const Color(0xFF1E1E2E),
-              child: Column(
-                children: [
-                  // Sliders for Valve 1 and Valve 2
-                  _buildSliders(),
-                  // Info banner
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    color: const Color(0xFF2D2D44),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, color: Colors.amber, size: 16),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Ручные задвижки работают фиксированно — регулятор подпитки (50–250 т/ч) '
-                            'создаёт возмущения, нужно удерживать уровни в диапазоне',
-                            style: TextStyle(fontSize: 10, color: Colors.grey[300]),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Charts PageView
-                  Expanded(
-                    child: PageView(
-                      controller: _pageController,
-                      onPageChanged: (index) {
-                        setState(() => _currentPage = index);
-                      },
-                      children: [
-                        _buildChartPage(
-                          FlowChart(data: _data),
-                          'Расходы, т/ч',
-                          Icons.show_chart,
-                        ),
-                        _buildChartPage(
-                          LevelChart(data: _data),
-                          'Уровни, м',
-                          Icons.water_drop,
-                        ),
-                        _buildChartPage(
-                          RegulatorChart(data: _data),
-                          'Регулятор',
-                          Icons.tune,
-                        ),
-                        _buildChartPage(
-                          TankVisualizer(data: _data),
-                          'Ёмкости',
-                          Icons.storage,
-                        ),
-                        _buildChartPage(
-                          ImitationScreen(model: _imitationModel),
-                          _kImitation,
-                          Icons.tune,
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Page indicator
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    color: const Color(0xFF282840),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _pageDot(0, Icons.show_chart),
-                        const SizedBox(width: 8),
-                        _pageDot(1, Icons.water_drop),
-                        const SizedBox(width: 8),
-                        _pageDot(2, Icons.opacity),
-                        const SizedBox(width: 8),
-                        _pageDot(3, Icons.storage),
-                        const SizedBox(width: 8),
-                        _pageDot(4, Icons.tune),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          // Основной контент: либо вкладки, либо ImitationScreen
+          Expanded(
+            child: _showExtraTabs
+                ? _buildExtraTabsContent()
+                : ImitationScreen(model: _imitationModel),
           ),
-          // Показываем только ImitationScreen когда вкладки скрыты
-          if (!_showExtraTabs)
-            Expanded(
-              child: ImitationScreen(model: _imitationModel),
-            ),
           // Кнопка переключения вкладок
           Container(
             padding: const EdgeInsets.all(8),
@@ -189,6 +103,92 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExtraTabsContent() {
+    return Container(
+      color: const Color(0xFF1E1E2E),
+      child: Column(
+        children: [
+          // Sliders for Valve 1 and Valve 2
+          _buildSliders(),
+          // Info banner
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            color: const Color(0xFF2D2D44),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Colors.amber, size: 16),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Ручные задвижки работают фиксированно — регулятор подпитки (50–250 т/ч) '
+                    'создаёт возмущения, нужно удерживать уровни в диапазоне',
+                    style: TextStyle(fontSize: 10, color: Colors.grey[300]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Charts PageView
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() => _currentPage = index);
+              },
+              children: [
+                _buildChartPage(
+                  FlowChart(data: _data),
+                  'Расходы, т/ч',
+                  Icons.show_chart,
+                ),
+                _buildChartPage(
+                  LevelChart(data: _data),
+                  'Уровни, м',
+                  Icons.water_drop,
+                ),
+                _buildChartPage(
+                  RegulatorChart(data: _data),
+                  'Регулятор',
+                  Icons.tune,
+                ),
+                _buildChartPage(
+                  TankVisualizer(data: _data),
+                  'Ёмкости',
+                  Icons.storage,
+                ),
+                _buildChartPage(
+                  ImitationScreen(model: _imitationModel),
+                  _kImitation,
+                  Icons.tune,
+                ),
+              ],
+            ),
+          ),
+          // Page indicator
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            color: const Color(0xFF282840),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _pageDot(0, Icons.show_chart),
+                const SizedBox(width: 8),
+                _pageDot(1, Icons.water_drop),
+                const SizedBox(width: 8),
+                _pageDot(2, Icons.opacity),
+                const SizedBox(width: 8),
+                _pageDot(3, Icons.storage),
+                const SizedBox(width: 8),
+                _pageDot(4, Icons.tune),
+              ],
             ),
           ),
         ],
