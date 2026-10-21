@@ -29,6 +29,11 @@ class _ImitationScreenState extends State<ImitationScreen> {
                   color: Colors.white,
                 ),
               ),
+              const SizedBox(height: 2),
+              Text(
+                'v1.4.0+7',
+                style: TextStyle(fontSize: 8, color: Colors.grey[600]),
+              ),
               const SizedBox(height: 4),
               Text(
                 'Управляйте задвижками, наблюдайте динамику уровней',
@@ -71,6 +76,9 @@ class _ImitationScreenState extends State<ImitationScreen> {
                 ],
               ),
               const SizedBox(height: 12),
+
+              // --- Vertical sliders ---
+              _buildVerticalSliders(),
             ],
           ),
         );
@@ -469,6 +477,177 @@ class _ImitationScreenState extends State<ImitationScreen> {
           color: active ? c : Colors.grey[600],
           fontWeight: active ? FontWeight.w600 : FontWeight.normal,
         ),
+      ),
+    );
+  }
+
+  Widget _buildVerticalSliders() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2D2D44),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          const Text(
+            'Регулировка задвижек',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white54),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Задвижка 1 — приток в ёмкость, Задвижка 2 — отток из ёмкости в химцех.\n'
+            'Подпитка — расход из химцеха (50–250 т/ч)',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 8, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _verticalSlider(
+                label: 'Задвижка 1',
+                subtitle: 'приток в ёмкость',
+                hint: 'Больше → ёмкость наполняется быстрее',
+                value: _model.qValve1 / ImitationModel.qInMax,
+                color: Colors.cyan,
+                onChanged: (v) => _model.setQValve1(v * ImitationModel.qInMax),
+                valueDisplay: '${_model.qValve1.toStringAsFixed(0)} т/ч',
+              ),
+              _verticalSlider(
+                label: 'Задвижка 2',
+                subtitle: 'отток из ёмкости',
+                hint: 'Больше → ёмкость опорожняется в химцех',
+                value: _model.qValve2 / ImitationModel.qInMax,
+                color: Colors.teal,
+                onChanged: (v) => _model.setQValve2(v * ImitationModel.qInMax),
+                valueDisplay: '${_model.qValve2.toStringAsFixed(0)} т/ч',
+              ),
+              _verticalSlider(
+                label: 'Подпитка',
+                subtitle: '50–250 т/ч',
+                hint: 'Автоматический регулятор (возмущения)',
+                value: (_model.qOut - ImitationModel.qOutMin) /
+                    (ImitationModel.qOutMax - ImitationModel.qOutMin),
+                color: Colors.red,
+                onChanged: (v) => _model.setQOut(
+                    ImitationModel.qOutMin + v * (ImitationModel.qOutMax - ImitationModel.qOutMin)),
+                valueDisplay: '${_model.qOut.toStringAsFixed(0)} т/ч',
+                showRandomToggle: true,
+                isRandom: _model.randomQOut,
+                onRandomToggle: _model.setRandomQOut,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _verticalSlider({
+    required String label,
+    required String subtitle,
+    required String hint,
+    required double value,
+    required Color color,
+    required ValueChanged<double> onChanged,
+    required String valueDisplay,
+    bool showRandomToggle = false,
+    bool isRandom = false,
+    ValueChanged<bool>? onRandomToggle,
+  }) {
+    return Tooltip(
+      message: hint,
+      preferBelow: false,
+      triggerMode: TooltipTriggerMode.tap,
+      decoration: BoxDecoration(
+        color: const Color(0xFF3D3D5C),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      textStyle: TextStyle(fontSize: 10, color: Colors.grey[300], height: 1.4),
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white70),
+          ),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 8, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            valueDisplay,
+            style: TextStyle(fontSize: 10, color: color),
+          ),
+          // Toggle для случайного/фиксированного режима
+          if (showRandomToggle)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    isRandom ? 'Случайно' : 'Фикс',
+                    style: TextStyle(fontSize: 7, color: isRandom ? Colors.green : Colors.blue),
+                  ),
+                  Switch(
+                    value: isRandom,
+                    onChanged: onRandomToggle,
+                    activeColor: Colors.green,
+                    inactiveThumbColor: Colors.blue,
+                    inactiveTrackColor: Colors.blue.withOpacity(0.3),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 2),
+          // Up arrow
+          IconButton(
+            icon: const Icon(Icons.arrow_upward, size: 18),
+            color: color,
+            onPressed: () => onChanged((value + 0.05).clamp(0.0, 1.0)),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            padding: EdgeInsets.zero,
+          ),
+          // Vertical slider
+          SizedBox(
+            height: 100,
+            child: RotatedBox(
+              quarterTurns: 3,
+              child: SizedBox(
+                width: 80,
+                child: Slider(
+                  value: value,
+                  min: 0.0,
+                  max: 1.0,
+                  divisions: 20,
+                  activeColor: color,
+                  inactiveColor: color.withOpacity(0.2),
+                  onChanged: onChanged,
+                ),
+              ),
+            ),
+          ),
+          // Down arrow
+          IconButton(
+            icon: const Icon(Icons.arrow_downward, size: 18),
+            color: color,
+            onPressed: () => onChanged((value - 0.05).clamp(0.0, 1.0)),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            padding: EdgeInsets.zero,
+          ),
+          // Percentage
+          Text(
+            '${(value * 100).toStringAsFixed(0)}%',
+            style: TextStyle(fontSize: 9, color: color),
+          ),
+        ],
       ),
     );
   }
