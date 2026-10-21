@@ -49,9 +49,19 @@ class _SimulationScreenState extends State<SimulationScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF1E1E2E),
       appBar: AppBar(
-        title: const Text(
-          'Моделирование системы водоподготовки',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Моделирование системы водоподготовки',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'v1.4.0+7',
+              style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+            ),
+          ],
         ),
         backgroundColor: const Color(0xFF282840),
         foregroundColor: Colors.white,

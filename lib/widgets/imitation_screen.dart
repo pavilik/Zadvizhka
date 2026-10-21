@@ -20,27 +20,6 @@ class _ImitationScreenState extends State<ImitationScreen> {
           padding: const EdgeInsets.all(12),
           child: Column(
             children: [
-              // Title
-              const Text(
-                'Имитация системы водоподготовки',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'v1.4.0+7',
-                style: TextStyle(fontSize: 8, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Управляйте задвижками, наблюдайте динамику уровней',
-                style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-              ),
-              const SizedBox(height: 12),
-
               // --- Control buttons + speed ---
               _buildControls(),
               const SizedBox(height: 12),
@@ -216,6 +195,8 @@ class _ImitationScreenState extends State<ImitationScreen> {
             step: 1,
             onIncrease: () => _model.setQValve1(_model.qValve1 + 1),
             onDecrease: () => _model.setQValve1(_model.qValve1 - 1),
+            sliderValue: _model.qValve1 / ImitationModel.qInMax,
+            onSliderChanged: (v) => _model.setQValve1(v * ImitationModel.qInMax),
           ),
           _arrow(),
           _flowNode('Ёмкость', '${_model.hEmk.toStringAsFixed(0)}', _statusColor(_model.emkStatus), compact: true),
@@ -228,6 +209,8 @@ class _ImitationScreenState extends State<ImitationScreen> {
             step: 1,
             onIncrease: () => _model.setQValve2(_model.qValve2 + 1),
             onDecrease: () => _model.setQValve2(_model.qValve2 - 1),
+            sliderValue: _model.qValve2 / ImitationModel.qInMax,
+            onSliderChanged: (v) => _model.setQValve2(v * ImitationModel.qInMax),
           ),
           _arrow(),
           _flowNode('Химцех', '${_model.hChem.toStringAsFixed(0)}', _statusColor(_model.chemStatus), compact: true),
@@ -241,6 +224,10 @@ class _ImitationScreenState extends State<ImitationScreen> {
             onIncrease: () => _model.setQOut(_model.qOut + 1),
             onDecrease: () => _model.setQOut(_model.qOut - 1),
             isRandom: _model.randomQOut,
+            sliderValue: (_model.qOut - ImitationModel.qOutMin) /
+                (ImitationModel.qOutMax - ImitationModel.qOutMin),
+            onSliderChanged: (v) => _model.setQOut(
+                ImitationModel.qOutMin + v * (ImitationModel.qOutMax - ImitationModel.qOutMin)),
           ),
           _arrow(),
           _flowNode('Выход', '${_model.qOut.toStringAsFixed(0)}', Colors.red, compact: true),
@@ -274,7 +261,7 @@ class _ImitationScreenState extends State<ImitationScreen> {
     );
   }
 
-  /// Редактируемый узел схемы с кнопками +/-
+  /// Редактируемый узел схемы с кнопками +/-, слайдером и значением
   Widget _flowNodeEditable(
     String label,
     double value,
@@ -284,6 +271,8 @@ class _ImitationScreenState extends State<ImitationScreen> {
     required VoidCallback onIncrease,
     required VoidCallback onDecrease,
     bool isRandom = false,
+    double? sliderValue,
+    ValueChanged<double>? onSliderChanged,
   }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -306,11 +295,11 @@ class _ImitationScreenState extends State<ImitationScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.remove_circle_outline, size: 16),
+              icon: const Icon(Icons.remove_circle_outline, size: 20),
               color: isRandom ? Colors.grey : Colors.red,
               onPressed: isRandom ? null : onDecrease,
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             ),
             const SizedBox(width: 2),
             Column(
@@ -318,7 +307,7 @@ class _ImitationScreenState extends State<ImitationScreen> {
               children: [
                 Text(
                   value.toStringAsFixed(0),
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
                 ),
                 if (percentage != null)
                   Text(
@@ -329,14 +318,39 @@ class _ImitationScreenState extends State<ImitationScreen> {
             ),
             const SizedBox(width: 2),
             IconButton(
-              icon: const Icon(Icons.add_circle_outline, size: 16),
+              icon: const Icon(Icons.add_circle_outline, size: 20),
               color: isRandom ? Colors.grey : Colors.green,
               onPressed: isRandom ? null : onIncrease,
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             ),
           ],
         ),
+        // Горизонтальный слайдер (синхронизирован с вертикальным)
+        if (sliderValue != null && onSliderChanged != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: SizedBox(
+              width: 70,
+              child: SliderTheme(
+                data: SliderThemeData(
+                  trackHeight: 2,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                  activeTrackColor: color,
+                  inactiveTrackColor: color.withOpacity(0.15),
+                  thumbColor: color,
+                  overlayColor: color.withOpacity(0.1),
+                ),
+                child: Slider(
+                  value: sliderValue,
+                  min: 0.0,
+                  max: 1.0,
+                  divisions: 20,
+                  onChanged: isRandom ? null : onSliderChanged,
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -358,16 +372,12 @@ class _ImitationScreenState extends State<ImitationScreen> {
 
     // Стрелка направления
     Widget directionIcon;
-    Color? directionColor;
     if (direction > 0) {
       directionIcon = const Icon(Icons.arrow_upward, size: 16, color: Colors.green);
-      directionColor = Colors.green;
     } else if (direction < 0) {
       directionIcon = const Icon(Icons.arrow_downward, size: 16, color: Colors.orange);
-      directionColor = Colors.orange;
     } else {
       directionIcon = const Icon(Icons.arrow_right, size: 16, color: Colors.grey);
-      directionColor = Colors.grey;
     }
 
     return Container(
@@ -513,6 +523,8 @@ class _ImitationScreenState extends State<ImitationScreen> {
                 value: _model.qValve1 / ImitationModel.qInMax,
                 color: Colors.cyan,
                 onChanged: (v) => _model.setQValve1(v * ImitationModel.qInMax),
+                onIncrease: () => _model.setQValve1(_model.qValve1 + 1),
+                onDecrease: () => _model.setQValve1(_model.qValve1 - 1),
                 valueDisplay: '${_model.qValve1.toStringAsFixed(0)} т/ч',
               ),
               _verticalSlider(
@@ -522,6 +534,8 @@ class _ImitationScreenState extends State<ImitationScreen> {
                 value: _model.qValve2 / ImitationModel.qInMax,
                 color: Colors.teal,
                 onChanged: (v) => _model.setQValve2(v * ImitationModel.qInMax),
+                onIncrease: () => _model.setQValve2(_model.qValve2 + 1),
+                onDecrease: () => _model.setQValve2(_model.qValve2 - 1),
                 valueDisplay: '${_model.qValve2.toStringAsFixed(0)} т/ч',
               ),
               _verticalSlider(
@@ -533,6 +547,8 @@ class _ImitationScreenState extends State<ImitationScreen> {
                 color: Colors.red,
                 onChanged: (v) => _model.setQOut(
                     ImitationModel.qOutMin + v * (ImitationModel.qOutMax - ImitationModel.qOutMin)),
+                onIncrease: () => _model.setQOut(_model.qOut + 1),
+                onDecrease: () => _model.setQOut(_model.qOut - 1),
                 valueDisplay: '${_model.qOut.toStringAsFixed(0)} т/ч',
                 showRandomToggle: true,
                 isRandom: _model.randomQOut,
@@ -553,6 +569,8 @@ class _ImitationScreenState extends State<ImitationScreen> {
     required Color color,
     required ValueChanged<double> onChanged,
     required String valueDisplay,
+    VoidCallback? onIncrease,
+    VoidCallback? onDecrease,
     bool showRandomToggle = false,
     bool isRandom = false,
     ValueChanged<bool>? onRandomToggle,
@@ -607,12 +625,12 @@ class _ImitationScreenState extends State<ImitationScreen> {
               ),
             ),
           const SizedBox(height: 2),
-          // Up arrow
+          // Up arrow (1 т/ч шаг)
           IconButton(
-            icon: const Icon(Icons.arrow_upward, size: 18),
-            color: color,
-            onPressed: () => onChanged((value + 0.05).clamp(0.0, 1.0)),
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            icon: const Icon(Icons.arrow_upward, size: 20),
+            color: isRandom ? Colors.grey : color,
+            onPressed: (isRandom || onIncrease == null) ? null : onIncrease,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             padding: EdgeInsets.zero,
           ),
           // Vertical slider
@@ -634,12 +652,12 @@ class _ImitationScreenState extends State<ImitationScreen> {
               ),
             ),
           ),
-          // Down arrow
+          // Down arrow (1 т/ч шаг)
           IconButton(
-            icon: const Icon(Icons.arrow_downward, size: 18),
-            color: color,
-            onPressed: () => onChanged((value - 0.05).clamp(0.0, 1.0)),
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            icon: const Icon(Icons.arrow_downward, size: 20),
+            color: isRandom ? Colors.grey : color,
+            onPressed: (isRandom || onDecrease == null) ? null : onDecrease,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             padding: EdgeInsets.zero,
           ),
           // Percentage
