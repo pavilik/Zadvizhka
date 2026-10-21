@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import '../models/imitation_model.dart';
 
 class ImitationScreen extends StatefulWidget {
-  const ImitationScreen({super.key});
+  final ImitationModel model;
+
+  const ImitationScreen({super.key, required this.model});
 
   @override
   State<ImitationScreen> createState() => _ImitationScreenState();
 }
 
 class _ImitationScreenState extends State<ImitationScreen> {
-  final ImitationModel _model = ImitationModel();
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _model,
+      listenable: widget.model,
       builder: (context, _) {
         return SingleChildScrollView(
           padding: const EdgeInsets.all(12),
@@ -34,22 +34,22 @@ class _ImitationScreenState extends State<ImitationScreen> {
                   Expanded(
                     child: _buildTank(
                       'Ёмкость\n2000 м³',
-                      _model.hEmk,
+                      widget.model.hEmk,
                       ImitationModel.vEmk,
-                      _model.emkStatus,
-                      _model.emkDirection,
-                      _model.emkTimeToAlarm,
+                      widget.model.emkStatus,
+                      widget.model.emkDirection,
+                      widget.model.emkTimeToAlarm,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: _buildTank(
                       'Бак химцеха\n800 м³',
-                      _model.hChem,
+                      widget.model.hChem,
                       ImitationModel.vChem,
-                      _model.chemStatus,
-                      _model.chemDirection,
-                      _model.chemTimeToAlarm,
+                      widget.model.chemStatus,
+                      widget.model.chemDirection,
+                      widget.model.chemTimeToAlarm,
                     ),
                   ),
                 ],
@@ -82,21 +82,21 @@ class _ImitationScreenState extends State<ImitationScreen> {
                 icon: Icons.play_arrow,
                 label: 'Пуск',
                 color: Colors.green,
-                onPressed: _model.running ? null : _model.start,
+                onPressed: widget.model.running ? null : widget.model.start,
               ),
               const SizedBox(width: 8),
               _ctrlButton(
                 icon: Icons.stop,
                 label: 'Стоп',
                 color: Colors.red,
-                onPressed: _model.running ? _model.stop : null,
+                onPressed: widget.model.running ? widget.model.stop : null,
               ),
               const SizedBox(width: 8),
               _ctrlButton(
                 icon: Icons.refresh,
                 label: 'Сброс',
                 color: Colors.orange,
-                onPressed: _model.reset,
+                onPressed: widget.model.reset,
               ),
             ],
           ),
@@ -118,30 +118,30 @@ class _ImitationScreenState extends State<ImitationScreen> {
                     overlayColor: Colors.amber.withOpacity(0.1),
                   ),
                   child: Slider(
-                    value: _model.speedSlider,
+                    value: widget.model.speedSlider,
                     min: 0.0,
                     max: 1.0,
                     divisions: 100,
-                    label: _model.speedLabel,
-                    onChanged: _model.setSpeed,
+                    label: widget.model.speedLabel,
+                    onChanged: widget.model.setSpeed,
                   ),
                 ),
               ),
               SizedBox(
                 width: 44,
                 child: Text(
-                  _model.speedLabel,
+                  widget.model.speedLabel,
                   style: const TextStyle(fontSize: 11, color: Colors.amber, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
           ),
           // Симулированное время
-          if (_model.running)
+          if (widget.model.running)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(
-                'Время: ${_model.simulatedTimeFormatted}',
+                'Время: ${widget.model.simulatedTimeFormatted}',
                 style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.w600),
               ),
             ),
@@ -189,48 +189,40 @@ class _ImitationScreenState extends State<ImitationScreen> {
           _arrow(),
           _flowNodeEditable(
             'З1',
-            _model.qValve1,
-            _model.kValve1 * 100,
+            widget.model.qValve1,
+            widget.model.kValve1 * 100,
             Colors.cyan,
             step: 1,
-            onIncrease: () => _model.setQValve1(_model.qValve1 + 1),
-            onDecrease: () => _model.setQValve1(_model.qValve1 - 1),
-            sliderValue: _model.qValve1 / ImitationModel.qInMax,
-            onSliderChanged: (v) => _model.setQValve1(v * ImitationModel.qInMax),
+            onIncrease: () => widget.model.setQValve1(widget.model.qValve1 + 1),
+            onDecrease: () => widget.model.setQValve1(widget.model.qValve1 - 1),
           ),
           _arrow(),
-          _flowNode('Ёмкость', '${_model.hEmk.toStringAsFixed(0)}', _statusColor(_model.emkStatus), compact: true),
+          _flowNode('Ёмкость', '${widget.model.hEmk.toStringAsFixed(0)}', _statusColor(widget.model.emkStatus), compact: true),
           _arrow(),
           _flowNodeEditable(
             'З2',
-            _model.qValve2,
-            _model.kValve2 * 100,
+            widget.model.qValve2,
+            widget.model.kValve2 * 100,
             Colors.teal,
             step: 1,
-            onIncrease: () => _model.setQValve2(_model.qValve2 + 1),
-            onDecrease: () => _model.setQValve2(_model.qValve2 - 1),
-            sliderValue: _model.qValve2 / ImitationModel.qInMax,
-            onSliderChanged: (v) => _model.setQValve2(v * ImitationModel.qInMax),
+            onIncrease: () => widget.model.setQValve2(widget.model.qValve2 + 1),
+            onDecrease: () => widget.model.setQValve2(widget.model.qValve2 - 1),
           ),
           _arrow(),
-          _flowNode('Химцех', '${_model.hChem.toStringAsFixed(0)}', _statusColor(_model.chemStatus), compact: true),
+          _flowNode('Химцех', '${widget.model.hChem.toStringAsFixed(0)}', _statusColor(widget.model.chemStatus), compact: true),
           _arrow(),
           _flowNodeEditable(
             'Пит',
-            _model.qOut,
+            widget.model.qOut,
             null,
             Colors.red,
             step: 1,
-            onIncrease: () => _model.setQOut(_model.qOut + 1),
-            onDecrease: () => _model.setQOut(_model.qOut - 1),
-            isRandom: _model.randomQOut,
-            sliderValue: (_model.qOut - ImitationModel.qOutMin) /
-                (ImitationModel.qOutMax - ImitationModel.qOutMin),
-            onSliderChanged: (v) => _model.setQOut(
-                ImitationModel.qOutMin + v * (ImitationModel.qOutMax - ImitationModel.qOutMin)),
+            onIncrease: () => widget.model.setQOut(widget.model.qOut + 1),
+            onDecrease: () => widget.model.setQOut(widget.model.qOut - 1),
+            isRandom: widget.model.randomQOut,
           ),
           _arrow(),
-          _flowNode('Выход', '${_model.qOut.toStringAsFixed(0)}', Colors.red, compact: true),
+          _flowNode('Выход', '${widget.model.qOut.toStringAsFixed(0)}', Colors.red, compact: true),
         ],
       ),
     );
@@ -261,7 +253,7 @@ class _ImitationScreenState extends State<ImitationScreen> {
     );
   }
 
-  /// Редактируемый узел схемы с кнопками +/-, слайдером и значением
+  /// Редактируемый узел схемы с кнопками +/- и значением
   Widget _flowNodeEditable(
     String label,
     double value,
@@ -271,8 +263,6 @@ class _ImitationScreenState extends State<ImitationScreen> {
     required VoidCallback onIncrease,
     required VoidCallback onDecrease,
     bool isRandom = false,
-    double? sliderValue,
-    ValueChanged<double>? onSliderChanged,
   }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -326,31 +316,6 @@ class _ImitationScreenState extends State<ImitationScreen> {
             ),
           ],
         ),
-        // Горизонтальный слайдер (синхронизирован с вертикальным)
-        if (sliderValue != null && onSliderChanged != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: SizedBox(
-              width: 70,
-              child: SliderTheme(
-                data: SliderThemeData(
-                  trackHeight: 2,
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-                  activeTrackColor: color,
-                  inactiveTrackColor: color.withOpacity(0.15),
-                  thumbColor: color,
-                  overlayColor: color.withOpacity(0.1),
-                ),
-                child: Slider(
-                  value: sliderValue,
-                  min: 0.0,
-                  max: 1.0,
-                  divisions: 20,
-                  onChanged: isRandom ? null : onSliderChanged,
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }
@@ -520,39 +485,39 @@ class _ImitationScreenState extends State<ImitationScreen> {
                 label: 'Задвижка 1',
                 subtitle: 'приток в ёмкость',
                 hint: 'Больше → ёмкость наполняется быстрее',
-                value: _model.qValve1 / ImitationModel.qInMax,
+                value: widget.model.qValve1 / ImitationModel.qInMax,
                 color: Colors.cyan,
-                onChanged: (v) => _model.setQValve1(v * ImitationModel.qInMax),
-                onIncrease: () => _model.setQValve1(_model.qValve1 + 1),
-                onDecrease: () => _model.setQValve1(_model.qValve1 - 1),
-                valueDisplay: '${_model.qValve1.toStringAsFixed(0)} т/ч',
+                onChanged: (v) => widget.model.setQValve1(v * ImitationModel.qInMax),
+                onIncrease: () => widget.model.setQValve1(widget.model.qValve1 + 1),
+                onDecrease: () => widget.model.setQValve1(widget.model.qValve1 - 1),
+                valueDisplay: '${widget.model.qValve1.toStringAsFixed(0)} т/ч',
               ),
               _verticalSlider(
                 label: 'Задвижка 2',
                 subtitle: 'отток из ёмкости',
                 hint: 'Больше → ёмкость опорожняется в химцех',
-                value: _model.qValve2 / ImitationModel.qInMax,
+                value: widget.model.qValve2 / ImitationModel.qInMax,
                 color: Colors.teal,
-                onChanged: (v) => _model.setQValve2(v * ImitationModel.qInMax),
-                onIncrease: () => _model.setQValve2(_model.qValve2 + 1),
-                onDecrease: () => _model.setQValve2(_model.qValve2 - 1),
-                valueDisplay: '${_model.qValve2.toStringAsFixed(0)} т/ч',
+                onChanged: (v) => widget.model.setQValve2(v * ImitationModel.qInMax),
+                onIncrease: () => widget.model.setQValve2(widget.model.qValve2 + 1),
+                onDecrease: () => widget.model.setQValve2(widget.model.qValve2 - 1),
+                valueDisplay: '${widget.model.qValve2.toStringAsFixed(0)} т/ч',
               ),
               _verticalSlider(
                 label: 'Подпитка',
                 subtitle: '50–250 т/ч',
                 hint: 'Автоматический регулятор (возмущения)',
-                value: (_model.qOut - ImitationModel.qOutMin) /
+                value: (widget.model.qOut - ImitationModel.qOutMin) /
                     (ImitationModel.qOutMax - ImitationModel.qOutMin),
                 color: Colors.red,
-                onChanged: (v) => _model.setQOut(
+                onChanged: (v) => widget.model.setQOut(
                     ImitationModel.qOutMin + v * (ImitationModel.qOutMax - ImitationModel.qOutMin)),
-                onIncrease: () => _model.setQOut(_model.qOut + 1),
-                onDecrease: () => _model.setQOut(_model.qOut - 1),
-                valueDisplay: '${_model.qOut.toStringAsFixed(0)} т/ч',
+                onIncrease: () => widget.model.setQOut(widget.model.qOut + 1),
+                onDecrease: () => widget.model.setQOut(widget.model.qOut - 1),
+                valueDisplay: '${widget.model.qOut.toStringAsFixed(0)} т/ч',
                 showRandomToggle: true,
-                isRandom: _model.randomQOut,
-                onRandomToggle: _model.setRandomQOut,
+                isRandom: widget.model.randomQOut,
+                onRandomToggle: widget.model.setRandomQOut,
               ),
             ],
           ),

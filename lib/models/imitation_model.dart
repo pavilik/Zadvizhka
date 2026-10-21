@@ -167,6 +167,18 @@ class ImitationModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Изменить процент открытия Задвижки 1 (0..1) — для верхних слайдеров
+  void setKValve1(double k) {
+    _qValve1 = (k * qInMax).clamp(0.0, qInMax);
+    notifyListeners();
+  }
+
+  // Изменить процент открытия Задвижки 2 (0..1) — для верхних слайдеров
+  void setKValve2(double k) {
+    _qValve2 = (k * qInMax).clamp(0.0, qInMax);
+    notifyListeners();
+  }
+
   // Изменить подпитку (в т/ч, шаг 1)
   void setQOut(double v) {
     _qOut = v.clamp(qOutMin, qOutMax);

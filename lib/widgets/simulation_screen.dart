@@ -1,6 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/simulation.dart';
+import '../models/imitation_model.dart';
 import 'flow_chart.dart';
 import 'level_chart.dart';
 import 'regulator_chart.dart';
@@ -21,20 +21,19 @@ class SimulationScreen extends StatefulWidget {
 
 class _SimulationScreenState extends State<SimulationScreen> {
   late SimulationResult _data;
-  double _kValve1 = 0.75;
-  double _kValve2 = 0.70;
+  final ImitationModel _imitationModel = ImitationModel();
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
-    _data = SystemSimulation.run(kValve1: _kValve1, kValve2: _kValve2);
+    _data = SystemSimulation.run(kValve1: _imitationModel.kValve1, kValve2: _imitationModel.kValve2);
   }
 
   void _rerunSimulation() {
     setState(() {
-      _data = SystemSimulation.run(kValve1: _kValve1, kValve2: _kValve2);
+      _data = SystemSimulation.run(kValve1: _imitationModel.kValve1, kValve2: _imitationModel.kValve2);
     });
   }
 
@@ -125,11 +124,11 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   'Ёмкости',
                   Icons.storage,
                 ),
-                _buildChartPage(
-                  ImitationScreen(),
-                  _kImitation,
-                  Icons.tune,
-                ),
+                  _buildChartPage(
+                    ImitationScreen(model: _imitationModel),
+                    _kImitation,
+                    Icons.tune,
+                  ),
               ],
             ),
           ),
@@ -174,7 +173,7 @@ class _SimulationScreenState extends State<SimulationScreen> {
                     const Icon(Icons.toll, size: 14, color: Colors.cyan),
                     const SizedBox(width: 4),
                     Text(
-                      'Задвижка 1: ${(_kValve1 * 100).toStringAsFixed(0)}%',
+                      'Задвижка 1: ${(_imitationModel.kValve1 * 100).toStringAsFixed(0)}%',
                       style: const TextStyle(
                         fontSize: 11,
                         color: Colors.cyan,
@@ -184,15 +183,13 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   ],
                 ),
                 Slider(
-                  value: _kValve1,
+                  value: _imitationModel.kValve1,
                   min: 0.0,
                   max: 1.0,
                   divisions: 20,
                   activeColor: Colors.cyan,
                   inactiveColor: Colors.cyan.withOpacity(0.2),
-                  onChanged: (v) {
-                    setState(() => _kValve1 = v);
-                  },
+                  onChanged: _imitationModel.setKValve1,
                   onChangeEnd: (_) => _rerunSimulation(),
                 ),
               ],
@@ -210,7 +207,7 @@ class _SimulationScreenState extends State<SimulationScreen> {
                     const Icon(Icons.toll, size: 14, color: Colors.teal),
                     const SizedBox(width: 4),
                     Text(
-                      'Задвижка 2: ${(_kValve2 * 100).toStringAsFixed(0)}%',
+                      'Задвижка 2: ${(_imitationModel.kValve2 * 100).toStringAsFixed(0)}%',
                       style: const TextStyle(
                         fontSize: 11,
                         color: Colors.teal,
@@ -220,15 +217,13 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   ],
                 ),
                 Slider(
-                  value: _kValve2,
+                  value: _imitationModel.kValve2,
                   min: 0.0,
                   max: 1.0,
                   divisions: 20,
                   activeColor: Colors.teal,
                   inactiveColor: Colors.teal.withOpacity(0.2),
-                  onChanged: (v) {
-                    setState(() => _kValve2 = v);
-                  },
+                  onChanged: _imitationModel.setKValve2,
                   onChangeEnd: (_) => _rerunSimulation(),
                 ),
               ],
